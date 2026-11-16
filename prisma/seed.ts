@@ -27,16 +27,16 @@ async function seedEventos() {
       local: "Instagram - @abrazalzheimer",
       precisaInscricao: false,
       descricao:
-        "Vem aí o nosso terceiro webinário, agora sobre um tema super atual que discutirá sobre o envelhecimento com sustentabilidade!\n\nVamos falar sobre demências, cuidados, acessibilidade e tecnologia em debates com especialistas! Não perca a chance de expandir seus conhecimentos e interagir com profissionais e estudantes da área.",
+        "Você está convidado para um webinário imperdível que discutirá temas fundamentais como envelhecimento, sustentabilidade, demências, cuidados, ancestralidade e saberes tradicionais.\n\nA iniciativa é uma ótima oportunidade para ampliar seus conhecimentos e interagir com especialistas renomados na área.",
     },
     {
       titulo: "10° Simpósio sobre a Doença de Alzheimer",
       data: "05/11",
       horario: "8:00h às 12:00h",
-      local: "Auditório Waly Salomão - Campus UESB Jequié",
+      local: "Auditório Waly Salomão (UESB), Recife - PE",
       precisaInscricao: true,
       descricao:
-        'No dia 05 de novembro, acontecerá o 10° Simpósio sobre a Doença de Alzheimer, com o tema "Interações para o cuidado integral à saúde".\n\nO evento objetiva promover reflexão e disseminação de conhecimento sobre a temática, assim como contribuir para a capacitação da comunidade acadêmica, profissionais da área, cuidadores e familiares, buscando melhorias no cuidado às pessoas com Alzheimer e para toda a comunidade.',
+        'No dia 05 de novembro, acontecerá o 10° Simpósio sobre a Doença de Alzheimer, com o tema "Inovações para o cuidado integral à saúde".\n\nO evento objetiva promover reflexão e disseminação do conhecimento sobre a temática, assim como contribuir para o alcance e amparo de novos cuidadores e familiares, buscando melhorias no cuidado às pessoas com Alzheimer e para toda a comunidade.',
     },
   ];
 
@@ -107,7 +107,7 @@ async function seedArtigos() {
       slug: "o-que-e",
       titulo: "O que é?",
       resumo: "O que é Alzheimer?",
-      icone: "/assets/artigo-o-que-e.svg",
+      icone: "/assets/artigo-o-que-e.png",
       conteudo: [
         "A doença de Alzheimer (DA) afeta a memória e a capacidade de pensar, piorando com o tempo. É a principal causa de demência e prejudica a independência da pessoa.",
         "Sintomas:",
@@ -120,7 +120,7 @@ async function seedArtigos() {
       slug: "saude-mental-cuidador",
       titulo: "Saúde mental do cuidador",
       resumo: "Saúde mental do cuidador",
-      icone: "/assets/artigo-saude-mental.svg",
+      icone: "/assets/artigo-saude-mental.png",
       conteudo: [
         "Cuidar de alguém com Alzheimer pode ser emocionalmente desgastante, por isso é fundamental que o cuidador cuide da sua própria saúde mental.",
         "1. Tire pausas regulares:",
@@ -135,7 +135,7 @@ async function seedArtigos() {
       slug: "orientacoes-alimentacao",
       titulo: "Orientações sobre alimentação",
       resumo: "Orientações sobre alimentação",
-      icone: "/assets/artigo-alimentacao.svg",
+      icone: "/assets/artigo-alimentacao.png",
       conteudo: [
         "Para pessoas com Alzheimer, a alimentação pode ser um desafio devido a dificuldades de memória e habilidades motoras. Aqui vão algumas orientações:",
         "Oferecer alimentos nutritivos, como frutas, vegetais, grãos integrais, proteínas magras e gorduras saudáveis, promove o bem-estar geral.",
@@ -151,7 +151,7 @@ async function seedArtigos() {
       slug: "sindrome-por-do-sol",
       titulo: "Síndrome do pôr do sol",
       resumo: "Síndrome do pôr do sol",
-      icone: "/assets/artigo-por-do-sol.svg",
+      icone: "/assets/artigo-por-do-sol.png",
       conteudo: [
         "A Síndrome do Pôr do Sol (ou sundowning) é um estado de maior confusão, agitação, ansiedade ou inquietação que costuma surgir no final da tarde e início da noite em pessoas com Alzheimer.",
         "O que pode desencadear os sintomas:",
@@ -169,7 +169,7 @@ async function seedArtigos() {
       slug: "alzheimer-e-danca",
       titulo: "Alzheimer e dança",
       resumo: "Alzheimer e dança",
-      icone: "/assets/artigo-danca.svg",
+      icone: "/assets/artigo-danca.png",
       conteudo: [
         "A dança combinada à música é uma das atividades mais benéficas para pessoas com Doença de Alzheimer, pois ativa memórias afetivas preservadas mesmo em fases mais avançadas.",
         "Benefícios da dança e da música:",
@@ -184,7 +184,7 @@ async function seedArtigos() {
       slug: "exercicios-fisicos",
       titulo: "Exercícios físicos para pacientes",
       resumo: "Exercícios físicos para pacientes",
-      icone: "/assets/artigo-exercicios.svg",
+      icone: "/assets/artigo-exercicios.png",
       conteudo: [
         "A prática regular de atividades físicas adaptadas ajuda a preservar a autonomia funcional, melhora a qualidade do sono e contribui para o equilíbrio emocional da pessoa com Alzheimer.",
         "1. Caminhadas leves e acompanhadas:",

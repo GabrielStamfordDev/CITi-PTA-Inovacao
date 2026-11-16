@@ -109,7 +109,7 @@ function getEventoMetadata(ev) {
   const isOnline = !ev.precisaInscricao;
   return {
     modalidade: isOnline ? "Evento online" : "Evento Presencial",
-    bannerUrl: ev.imagem || (isOnline ? "/assets/evento-webinario.svg" : "/assets/evento-simposio.svg"),
+    bannerUrl: ev.imagem || (isOnline ? "/assets/evento-webinario.png" : "/assets/evento-simposio.png"),
   };
 }
 
@@ -125,7 +125,7 @@ function renderEventos() {
       const { modalidade, bannerUrl } = getEventoMetadata(ev);
       return `
       <div onclick="openEvento(${ev.id})" class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer hover:border-[#7353ba] transition">
-        <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(ev.titulo)}" class="w-full h-36 object-cover bg-slate-900" />
+        <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(ev.titulo)}" class="w-full aspect-[16/9] object-cover bg-slate-900" />
         <div class="px-3.5 py-2.5 text-xs text-slate-600 flex items-center justify-between gap-2">
           <div>
             <p class="font-medium text-slate-700">${escapeHtml(ev.data)} - ${escapeHtml(ev.horario)}</p>
@@ -167,7 +167,7 @@ function openEvento(eventoId) {
     </div>
 
     <div class="my-4 overflow-hidden rounded-xl shadow border border-slate-200">
-      <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(ev.titulo)}" class="w-full h-40 object-cover bg-slate-900" />
+      <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(ev.titulo)}" class="w-full aspect-[16/9] object-cover bg-slate-900" />
     </div>
 
     ${
