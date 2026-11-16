@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <rect width="200" height="160" fill="#fef3c7"/>
+  <circle cx="100" cy="80" r="64" fill="#d6d3d1"/>
+  <circle cx="100" cy="80" r="58" fill="#ffffff"/>
+  <circle cx="100" cy="80" r="50" fill="#ecfccb"/>
+  <!-- Greens -->
+  <circle cx="80" cy="64" r="18" fill="#4ade80"/>
+  <circle cx="72" cy="84" r="16" fill="#22c55e"/>
+  <circle cx="94" cy="58" r="14" fill="#16a34a"/>
+  <!-- Salmon / Protein -->
+  <rect x="104" y="54" width="32" height="24" rx="10" fill="#fb7185"/>
+  <line x1="110" y1="60" x2="128" y2="74" stroke="#ffe4e6" stroke-width="2"/>
+  <line x1="116" y1="56" x2="132" y2="68" stroke="#ffe4e6" stroke-width="2"/>
+  <!-- Grains / Avocado / Tomatoes -->
+  <circle cx="122" cy="96" r="16" fill="#facc15"/>
+  <circle cx="95" cy="102" r="15" fill="#a3e635"/>
+  <circle cx="95" cy="102" r="6" fill="#92400e"/>
+  <circle cx="76" cy="102" r="7" fill="#ef4444"/>
+  <circle cx="110" cy="82" r="6" fill="#f97316"/>
+  <circle cx="85" cy="78" r="5" fill="#ef4444"/>
+</svg>

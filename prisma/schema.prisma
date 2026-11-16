@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int         @id @default(autoincrement())
+  nome       String
+  email      String      @unique
+  senha      String
+  inscricoes Inscricao[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Evento {
+  id                 Int         @id @default(autoincrement())
+  titulo             String
+  data               String
+  horario            String
+  local              String
+  descricao          String
+  precisaInscricao   Boolean     @default(true)
+  inscricoes         Inscricao[]
+  createdAt          DateTime    @default(now())
+}
+
+model Inscricao {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  eventoId  Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evento    Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventoId]) // Evita inscrição duplicada no mesmo evento
+}
+
+model LinkApoio {
+  id        Int    @id @default(autoincrement())
+  categoria String // "Associacoes", "WhatsApp", "Facebook"
+  titulo    String
+  subtitulo String
+  url       String
+  icone     String
+}
+
+model Artigo {
+  id        Int    @id @default(autoincrement())
+  slug      String @unique
+  titulo    String
+  resumo    String
+  conteudo  String // Texto estruturado do artigo
+  icone     String
+}
+
+model Faq {
+  id       Int    @id @default(autoincrement())
+  pergunta String
+  resposta String
+  ordem    Int
+}

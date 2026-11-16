@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <defs>
+    <linearGradient id="bgEx" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#f3e8ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="160" fill="url(#bgEx)"/>
+  <rect y="124" width="200" height="36" fill="#d8b4fe" fill-opacity="0.4"/>
+  <!-- Person 1 stretching -->
+  <circle cx="72" cy="48" r="11" fill="#7c3aed"/>
+  <path d="M52 62 L72 70 L94 56" stroke="#7c3aed" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <rect x="64" y="68" width="16" height="32" rx="7" fill="#8b5cf6"/>
+  <path d="M67 98 L62 132 M77 98 L84 132" stroke="#5b21b6" stroke-width="6" stroke-linecap="round"/>
+  <!-- Person 2 stretching -->
+  <circle cx="132" cy="52" r="11" fill="#0d9488"/>
+  <path d="M112 64 L132 72 L152 58" stroke="#0d9488" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <rect x="124" y="70" width="16" height="32" rx="7" fill="#14b8a6"/>
+  <path d="M127 100 L122 132 M137 100 L144 132" stroke="#115e59" stroke-width="6" stroke-linecap="round"/>
+</svg>
