@@ -95,9 +95,27 @@
         margin-top: 0 !important;
       }
 
+      body.desktop-mode #home-assistant-btn,
       body.desktop-mode #home-profile-btn {
         grid-column: span 2 / span 2;
       }
+
+      body.desktop-mode #assistant-quick-chips {
+        flex-wrap: wrap;
+        overflow-x: visible;
+      }
+    }
+
+    #screen-assistente.active {
+      overflow: hidden;
+    }
+
+    .quick-chips-strip::-webkit-scrollbar {
+      height: 4px;
+    }
+    .quick-chips-strip::-webkit-scrollbar-thumb {
+      background-color: rgba(115, 83, 186, 0.25);
+      border-radius: 9999px;
     }
 
     .screen {
@@ -571,12 +589,18 @@
       </div>
 
       <!-- Saudação e Botões Pílula Centralizados -->
-      <div class="px-8 pt-6 pb-8 flex-1 flex flex-col items-center">
-        <p id="home-greeting" class="text-center text-slate-600 text-[15px] mb-7 max-w-[260px] leading-relaxed">
+      <div class="px-8 pt-4 pb-6 flex-1 flex flex-col items-center">
+        <p id="home-greeting" class="text-center text-slate-600 text-[15px] mb-5 max-w-[260px] leading-relaxed">
           Olá, [nome], como posso te ajudar hoje?
         </p>
 
-        <div id="home-actions" class="w-full max-w-[245px] space-y-3.5">
+        <div id="home-actions" class="w-full max-w-[255px] space-y-3">
+          <button type="button" id="home-assistant-btn" onclick="openAssistant()"
+                  class="pill-btn-purple w-full py-3.5 px-4 text-sm font-semibold flex items-center justify-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
+            <span>Assistente CuiDA (IA)</span>
+          </button>
+
           <button type="button" onclick="navigate('screen-eventos')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
             Eventos e Encontros
           </button>
@@ -675,6 +699,102 @@
       </div>
 
       <div id="profile-content" class="space-y-4 desktop-narrow"></div>
+    </section>
+
+    <!-- ==========================================
+         TELA 13: ASSISTENTE CUIDA (IA CONTEXTUALIZADA - PÁGINA ÚNICA)
+    =========================================== -->
+    <section id="screen-assistente" class="screen p-0">
+      <!-- Cabeçalho fixo do Assistente -->
+      <div class="shrink-0 px-5 pt-4 pb-2.5 border-b border-purple-200/70 bg-[#f7f4ef]">
+        <div class="desktop-readable">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <h2 class="text-xl font-bold text-[#5b21b6] flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-5 h-5 text-[#7353ba] shrink-0"></i>
+                <span>Assistente CuiDA</span>
+              </h2>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Orientações práticas com base científica no seu contexto
+              </p>
+            </div>
+            <button type="button" id="assistant-sources-toggle" onclick="toggleAssistantSourcesPanel()"
+                    aria-expanded="false"
+                    class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-100 hover:bg-purple-200/80 text-[#5b21b6] text-xs font-semibold transition min-h-[34px]">
+              <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+              <span id="assistant-sources-badge">Acervo científico</span>
+            </button>
+          </div>
+
+          <!-- Painel expansível listando todos os PDFs do acervo -->
+          <div id="assistant-sources-panel" class="hidden mt-2.5 p-3 rounded-xl bg-white border border-purple-200 shadow-sm max-h-48 overflow-y-auto space-y-1.5"></div>
+
+          <!-- Atalhos rápidos para momentos de dúvida ou crise -->
+          <div id="assistant-quick-chips" class="quick-chips-strip flex gap-1.5 overflow-x-auto pt-2.5 pb-1">
+            <button type="button" onclick="askAssistantQuick('Meu familiar com Alzheimer insiste que quer sair de casa para ir embora. Como agir sem piorar a agitação?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Quer sair de casa
+            </button>
+            <button type="button" onclick="askAssistantQuick('O que é a Síndrome do Pôr do Sol e como acalmar a agitação no fim da tarde?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Agitação no fim da tarde
+            </button>
+            <button type="button" onclick="askAssistantQuick('Ele(a) recusa tomar banho e fica irritado(a). Que estratégias posso usar?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Recusa o banho
+            </button>
+            <button type="button" onclick="askAssistantQuick('Ele(a) repete a mesma pergunta dezenas de vezes. Como responder sem perder a paciência?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Repete perguntas
+            </button>
+            <button type="button" onclick="askAssistantQuick('O que fazer diante da recusa alimentar ou risco de engasgos no Alzheimer?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Alimentação / engasgos
+            </button>
+            <button type="button" onclick="askAssistantQuick('Quais medicamentos para Alzheimer são gratuitos no SUS e como funciona a isenção de Imposto de Renda?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Remédios SUS e Direitos
+            </button>
+            <button type="button" onclick="askAssistantQuick('Estou me sentindo muito sobrecarregado(a) cuidando sozinho(a). Onde buscar apoio e cuidar da minha saúde mental?')"
+                    class="shrink-0 px-3 py-1.5 rounded-full bg-white border border-purple-200 hover:border-[#7353ba] hover:bg-purple-50 text-xs font-medium text-[#4c1d95] transition">
+              Estou esgotado(a)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Área rolável de conversa com botões de atalho para Início e Final -->
+      <div class="relative flex-1 min-h-0 flex flex-col">
+        <div id="assistant-messages" class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-14 space-y-3.5"></div>
+
+        <div id="assistant-scroll-controls"
+             class="absolute bottom-2.5 right-4 z-20 flex items-center gap-1 bg-white/95 backdrop-blur border border-purple-200 rounded-full p-1 shadow-md">
+          <button type="button" onclick="scrollAssistantToTop()" aria-label="Subir para o início da conversa" title="Subir ao início da conversa"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-purple-100 text-[#5b21b6] text-[11px] font-semibold transition">
+            <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+            <span>Início</span>
+          </button>
+          <span class="w-px h-3.5 bg-purple-200/80" aria-hidden="true"></span>
+          <button type="button" onclick="scrollAssistantToBottom()" aria-label="Descer para o final da conversa" title="Descer até o final da conversa"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-purple-100 text-[#5b21b6] text-[11px] font-semibold transition">
+            <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+            <span>Final</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra fixa de pergunta livre -->
+      <div class="shrink-0 px-5 py-3 bg-white/90 border-t border-purple-200/70">
+        <form id="form-assistant" class="desktop-readable flex items-center gap-2">
+          <input type="text" id="assistant-input" maxlength="800" autocomplete="off"
+                 placeholder="Escreva sua dúvida sobre o cuidado..."
+                 class="flex-1 min-w-0 bg-[#f3effc] border border-purple-200 focus:border-[#7353ba] rounded-full px-4 py-2.5 text-sm text-slate-800 focus:outline-none min-h-[44px]" />
+          <button type="submit" id="assistant-submit-btn" aria-label="Enviar pergunta ao assistente" title="Enviar pergunta"
+                  class="pill-btn-purple w-11 h-11 shrink-0 flex items-center justify-center disabled:opacity-50">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
     </section>
 
     <!-- ==========================================

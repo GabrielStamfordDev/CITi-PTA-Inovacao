@@ -12,8 +12,10 @@ routes.post("/api/auth/recover/confirm", UserController.confirmPasswordReset);
 routes.get("/api/auth/user/:id", UserController.getProfile);
 routes.put("/api/auth/user/:id", UserController.updateProfile);
 
-// Conteúdos e Eventos do CuiDA
+// Conteúdos, Eventos e Assistente Científico do CuiDA
 routes.get("/api/dados", AppController.getInitialData);
 routes.post("/api/eventos/:id/inscricao", AppController.toggleInscricao);
+routes.get("/api/assistente/fontes", AppController.getAssistantSources);
+routes.post("/api/assistente/perguntar", AppController.askAssistant);
 
 export default routes;

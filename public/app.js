@@ -544,6 +544,7 @@ function goHome() {
 function logout() {
   currentUser = null;
   isEditingProfile = false;
+  if (typeof resetAssistantState === "function") resetAssistantState();
   localStorage.removeItem("cuida_user");
   navHistory = [];
   navigate("screen-welcome", false);
@@ -1421,6 +1422,405 @@ document.getElementById("form-recover-confirm").addEventListener("submit", async
     btn.disabled = false;
     btn.textContent = originalText;
   }
+});
+
+// ==================================================
+// 7. ASSISTENTE CUIDA (IA CONTEXTUALIZADA E ACERVO CIENTÍFICO)
+// ==================================================
+const assistantState = {
+  messages: [],
+  loading: false,
+  sources: [],
+  sourcesLoaded: false,
+  geminiEnabled: false,
+  sourcesPanelOpen: false,
+};
+
+function resetAssistantState() {
+  assistantState.messages = [];
+  assistantState.loading = false;
+  assistantState.sourcesPanelOpen = false;
+  const panel = document.getElementById("assistant-sources-panel");
+  if (panel) panel.classList.add("hidden");
+  const toggleBtn = document.getElementById("assistant-sources-toggle");
+  if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
+}
+
+function formatAssistantInlineMarkdown(rawLine) {
+  let safe = escapeHtml(rawLine);
+  safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-[#4c1d95]">$1</strong>');
+  return safe;
+}
+
+function formatAssistantAnswerHtml(rawText) {
+  const lines = String(rawText || "").split("\n");
+  const htmlParts = [];
+  let listItems = [];
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    htmlParts.push(`<ul class="list-disc pl-5 space-y-1.5 my-2">${listItems.join("")}</ul>`);
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      flushList();
+      continue;
+    }
+
+    if (/^[-•*]\s+/.test(trimmed)) {
+      const content = trimmed.replace(/^[-•*]\s+/, "");
+      listItems.push(
+        `<li class="reader-body text-slate-700">${formatAssistantInlineMarkdown(content)}</li>`
+      );
+      continue;
+    }
+
+    flushList();
+    htmlParts.push(
+      `<p class="reader-body text-slate-700">${formatAssistantInlineMarkdown(trimmed)}</p>`
+    );
+  }
+
+  flushList();
+  return htmlParts.join("");
+}
+
+function stripMarkdownForSpeech(rawText) {
+  return String(rawText || "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/^[-•*]\s+/gm, "")
+    .trim();
+}
+
+function buildWelcomeAssistantMessage() {
+  const firstName = currentUser?.nome?.trim().split(/\s+/)[0];
+  const lovedOne = currentUser?.pessoaComAlzheimer?.trim();
+  const stage = currentUser?.estagioDaDoenca?.trim();
+
+  let greeting = firstName ? `Olá, ${firstName}! ` : "Olá! ";
+  greeting += "Sou o **Assistente CuiDA**. ";
+  if (lovedOne) {
+    greeting += `Estou aqui para ajudar você nos cuidados com **${lovedOne}**`;
+    if (stage && stage !== "Prefiro não informar") {
+      greeting += ` (${stage})`;
+    }
+    greeting += ". ";
+  }
+  greeting +=
+    "Minhas orientações são baseadas nos protocolos do **Ministério da Saúde**, **OMS (iSupport)**, **ABRAz**, **NICE** e médicos geriatras do acervo.";
+
+  return {
+    id: "welcome",
+    role: "assistant",
+    content: greeting,
+    sources: [],
+    suggestions: [
+      "Meu familiar quer sair de casa para ir embora. Como agir?",
+      "Como facilitar o banho sem gerar conflito?",
+      "Quais medicamentos são gratuitos no SUS?",
+    ],
+    isWelcome: true,
+  };
+}
+
+function renderAssistantSourcesPanel() {
+  const badgeEl = document.getElementById("assistant-sources-badge");
+  const panel = document.getElementById("assistant-sources-panel");
+  if (!panel) return;
+
+  const count = assistantState.sources.length;
+  if (badgeEl) {
+    badgeEl.textContent = count ? `Acervo (${count} PDFs)` : "Acervo científico";
+  }
+
+  if (!count) {
+    panel.innerHTML = `<p class="text-xs text-slate-500">Carregando documentos científicos do acervo...</p>`;
+    return;
+  }
+
+  const modeHint = assistantState.geminiEnabled
+    ? "Motor ativo: Gemini API + Acervo Curado"
+    : "Motor ativo: RAG Científico Local (acervo-pdf)";
+
+  const itemsHtml = assistantState.sources
+    .map(
+      (src) => `
+      <a href="${escapeHtml(src.url)}" target="_blank" rel="noopener noreferrer"
+         class="flex items-start justify-between gap-2 p-2 rounded-lg bg-purple-50/70 hover:bg-purple-100/70 border border-purple-100 transition">
+        <div class="min-w-0">
+          <p class="text-xs font-semibold text-[#5b21b6] leading-snug">${escapeHtml(src.title)}</p>
+          <p class="text-[11px] text-slate-600">${escapeHtml(src.institution)} • ${escapeHtml(src.year)}</p>
+        </div>
+        <span class="text-[11px] font-semibold text-[#7353ba] shrink-0 underline">Abrir PDF</span>
+      </a>`
+    )
+    .join("");
+
+  panel.innerHTML = `
+    <div class="flex items-center justify-between gap-2 pb-1 border-b border-purple-100">
+      <span class="text-[11px] font-bold uppercase tracking-wide text-[#5b21b6]">Fontes Oficiais Indexadas</span>
+      <span class="text-[10px] font-medium text-slate-500">${escapeHtml(modeHint)}</span>
+    </div>
+    <div class="space-y-1.5 pt-1">${itemsHtml}</div>
+  `;
+}
+
+function toggleAssistantSourcesPanel() {
+  assistantState.sourcesPanelOpen = !assistantState.sourcesPanelOpen;
+  const panel = document.getElementById("assistant-sources-panel");
+  const btn = document.getElementById("assistant-sources-toggle");
+  if (panel) panel.classList.toggle("hidden", !assistantState.sourcesPanelOpen);
+  if (btn) btn.setAttribute("aria-expanded", assistantState.sourcesPanelOpen ? "true" : "false");
+}
+
+async function loadAssistantSources() {
+  if (assistantState.sourcesLoaded) {
+    renderAssistantSourcesPanel();
+    return;
+  }
+  try {
+    const res = await fetch("/api/assistente/fontes");
+    if (!res.ok) return;
+    const data = await res.json();
+    assistantState.sources = Array.isArray(data.sources) ? data.sources : [];
+    assistantState.geminiEnabled = Boolean(data.geminiEnabled);
+    assistantState.sourcesLoaded = true;
+    renderAssistantSourcesPanel();
+  } catch (err) {
+    console.error("Erro ao buscar fontes do assistente:", err);
+  }
+}
+
+function scrollAssistantToTop() {
+  const container = document.getElementById("assistant-messages");
+  if (container) container.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function scrollAssistantToBottom() {
+  const container = document.getElementById("assistant-messages");
+  if (container) container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+}
+
+function renderAssistantMessages(scrollBehavior = "preserve") {
+  const container = document.getElementById("assistant-messages");
+  if (!container) return;
+
+  const prevScrollTop = container.scrollTop;
+
+  const list = assistantState.messages.length
+    ? assistantState.messages
+    : [buildWelcomeAssistantMessage()];
+
+  const bubblesHtml = list
+    .map((msg, msgIdx) => {
+      if (msg.role === "user") {
+        return `
+          <div id="assistant-msg-wrap-${msgIdx}" class="flex justify-end">
+            <div class="max-w-[85%] bg-[#7353ba] text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
+              <p class="reader-body text-white">${escapeHtml(msg.content)}</p>
+            </div>
+          </div>`;
+      }
+
+      const speechKey = `assistant-msg-${msgIdx}`;
+      speechTexts[speechKey] = stripMarkdownForSpeech(msg.content);
+
+      const sourcesHtml =
+        Array.isArray(msg.sources) && msg.sources.length
+          ? `<div class="pt-2.5 mt-2.5 border-t border-purple-100 space-y-1.5">
+               <p class="text-[11px] font-bold uppercase tracking-wide text-[#5b21b6]">Fontes científicas consultadas</p>
+               <div class="flex flex-wrap gap-1.5">
+                 ${msg.sources
+                   .map(
+                     (src) => `
+                     <a href="${escapeHtml(src.url)}" target="_blank" rel="noopener noreferrer"
+                        title="${escapeHtml(src.institution)}"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-[11px] font-medium text-[#5b21b6] transition">
+                       <span>📄 ${escapeHtml(src.title.length > 42 ? src.title.slice(0, 42) + "..." : src.title)}</span>
+                     </a>`
+                   )
+                   .join("")}
+               </div>
+             </div>`
+          : "";
+
+      const suggestionsHtml =
+        Array.isArray(msg.suggestions) && msg.suggestions.length && msgIdx === list.length - 1 && !assistantState.loading
+          ? `<div class="pt-2.5 mt-2 border-t border-slate-100 space-y-1.5">
+               <p class="text-[11px] font-semibold text-slate-500">Perguntas relacionadas:</p>
+               <div class="flex flex-wrap gap-1.5">
+                 ${msg.suggestions
+                   .map(
+                     (sug, sIdx) => `
+                     <button type="button" data-assistant-sug="${msgIdx}:${sIdx}"
+                             class="text-left px-3 py-1.5 rounded-xl bg-[#f7f4ef] hover:bg-purple-50 border border-purple-200/80 text-xs font-medium text-[#4c1d95] transition">
+                       ${escapeHtml(sug)}
+                     </button>`
+                   )
+                   .join("")}
+               </div>
+             </div>`
+          : "";
+
+      return `
+        <div id="assistant-msg-wrap-${msgIdx}" class="flex justify-start">
+          <div class="w-full max-w-[96%] bg-white rounded-2xl rounded-bl-sm px-4 py-3.5 shadow-sm border border-purple-200/80 space-y-2">
+            ${formatAssistantAnswerHtml(msg.content)}
+            <div class="pt-1 flex flex-wrap items-center justify-between gap-2">
+              ${buildSpeechButtonHtml(`speech-btn-ast-${msgIdx}`, speechKey, "Ouvir orientação", true)}
+              ${
+                msg.isWelcome
+                  ? ""
+                  : `<span class="text-[10px] text-slate-400">Base educativa • Não substitui consulta médica</span>`
+              }
+            </div>
+            ${sourcesHtml}
+            ${suggestionsHtml}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  const loadingHtml = assistantState.loading
+    ? `<div id="assistant-loading-indicator" class="flex justify-start">
+         <div class="bg-white rounded-2xl px-4 py-3 border border-purple-200 shadow-sm text-xs text-[#5b21b6] font-medium flex items-center gap-2">
+           <span class="inline-block w-2 h-2 rounded-full bg-[#7353ba] animate-pulse"></span>
+           <span>Consultando o acervo científico do CuiDA...</span>
+         </div>
+       </div>`
+    : "";
+
+  container.innerHTML = `<div class="desktop-readable space-y-3.5">${bubblesHtml}${loadingHtml}</div>`;
+
+  container.querySelectorAll("[data-assistant-sug]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const [mIdxStr, sIdxStr] = (btn.getAttribute("data-assistant-sug") || "").split(":");
+      const targetMsg = list[Number(mIdxStr)];
+      const q = targetMsg?.suggestions?.[Number(sIdxStr)];
+      if (q) sendAssistantQuestion(q);
+    });
+  });
+
+  // Controle de rolagem pensado para leitura confortável do início da resposta
+  if (scrollBehavior === "to-question") {
+    const userEl = document.getElementById(`assistant-msg-wrap-${list.length - 1}`);
+    if (userEl) {
+      container.scrollTop = Math.max(0, userEl.offsetTop - 12);
+    }
+  } else if (scrollBehavior === "anchor-reply-start") {
+    const replyEl = document.getElementById(`assistant-msg-wrap-${list.length - 1}`);
+    const userBeforeEl = document.getElementById(`assistant-msg-wrap-${list.length - 2}`);
+    if (replyEl) {
+      const replyTopVisible =
+        replyEl.offsetTop >= prevScrollTop &&
+        replyEl.offsetTop <= prevScrollTop + Math.max(120, container.clientHeight - 140);
+      if (replyTopVisible) {
+        container.scrollTop = prevScrollTop;
+      } else {
+        const anchorEl = userBeforeEl || replyEl;
+        container.scrollTop = Math.max(0, anchorEl.offsetTop - 12);
+      }
+    } else {
+      container.scrollTop = prevScrollTop;
+    }
+  } else if (scrollBehavior === "to-top") {
+    container.scrollTop = 0;
+  } else {
+    container.scrollTop = prevScrollTop;
+  }
+}
+
+function openAssistant() {
+  if (!assistantState.messages.length) {
+    assistantState.messages = [buildWelcomeAssistantMessage()];
+    renderAssistantMessages("to-top");
+  } else {
+    renderAssistantMessages("preserve");
+  }
+  loadAssistantSources();
+  navigate("screen-assistente");
+}
+
+function askAssistantQuick(questionText) {
+  sendAssistantQuestion(questionText);
+}
+
+async function sendAssistantQuestion(rawQuestion) {
+  const question = String(rawQuestion || "").trim();
+  if (!question || assistantState.loading) return;
+
+  stopSpeech();
+
+  if (!assistantState.messages.length) {
+    assistantState.messages = [buildWelcomeAssistantMessage()];
+  }
+
+  const history = assistantState.messages
+    .filter((m) => !m.isWelcome)
+    .slice(-6)
+    .map((m) => ({ role: m.role, content: m.content }));
+
+  assistantState.messages.push({
+    id: `u-${Date.now()}`,
+    role: "user",
+    content: question,
+  });
+  assistantState.loading = true;
+
+  const inputEl = document.getElementById("assistant-input");
+  const submitBtn = document.getElementById("assistant-submit-btn");
+  if (inputEl) inputEl.value = "";
+  if (submitBtn) submitBtn.disabled = true;
+
+  renderAssistantMessages("to-question");
+
+  try {
+    const res = await fetch("/api/assistente/perguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question,
+        userId: currentUser?.id || null,
+        history,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || "Erro ao consultar assistente.");
+    }
+
+    assistantState.messages.push({
+      id: `a-${Date.now()}`,
+      role: "assistant",
+      content: data.answer,
+      sources: Array.isArray(data.sources) ? data.sources : [],
+      suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+    });
+  } catch (err) {
+    assistantState.messages.push({
+      id: `err-${Date.now()}`,
+      role: "assistant",
+      content:
+        "Não consegui concluir sua consulta agora. Verifique se o servidor está ativo e tente novamente em instantes.",
+      sources: [],
+      suggestions: [],
+    });
+    showToast(err?.message || "Erro ao consultar o assistente.");
+  } finally {
+    assistantState.loading = false;
+    if (submitBtn) submitBtn.disabled = false;
+    renderAssistantMessages("anchor-reply-start");
+    lucide.createIcons();
+  }
+}
+
+document.getElementById("form-assistant")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const inputEl = document.getElementById("assistant-input");
+  await sendAssistantQuestion(inputEl?.value || "");
 });
 
 window.addEventListener("DOMContentLoaded", async () => {

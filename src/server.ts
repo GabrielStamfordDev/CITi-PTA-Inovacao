@@ -7,8 +7,9 @@ const app = express();
 
 app.use(express.json());
 
-// Serve os arquivos estáticos do Front-end (pasta public)
+// Serve os arquivos estáticos do Front-end (pasta public) e os PDFs científicos do acervo
 app.use(express.static(path.resolve(__dirname, "..", "public")));
+app.use("/acervo-pdf", express.static(path.resolve(__dirname, "..", "acervo-pdf")));
 
 // Rotas da API
 app.use(routes);
