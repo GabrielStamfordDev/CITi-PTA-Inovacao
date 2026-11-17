@@ -8,25 +8,39 @@ datasource db {
 }
 
 model User {
-  id         Int         @id @default(autoincrement())
-  nome       String
-  email      String      @unique
-  senha      String
-  inscricoes Inscricao[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id                  Int                  @id @default(autoincrement())
+  nome                String
+  email               String               @unique
+  senha               String
+  inscricoes          Inscricao[]
+  passwordResetTokens PasswordResetToken[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, used])
 }
 
 model Evento {
-  id                 Int         @id @default(autoincrement())
-  titulo             String
-  data               String
-  horario            String
-  local              String
-  descricao          String
-  precisaInscricao   Boolean     @default(true)
-  inscricoes         Inscricao[]
-  createdAt          DateTime    @default(now())
+  id               Int         @id @default(autoincrement())
+  titulo           String
+  data             String
+  horario          String
+  local            String
+  descricao        String
+  precisaInscricao Boolean     @default(true)
+  inscricoes       Inscricao[]
+  createdAt        DateTime    @default(now())
 }
 
 model Inscricao {
@@ -50,12 +64,12 @@ model LinkApoio {
 }
 
 model Artigo {
-  id        Int    @id @default(autoincrement())
-  slug      String @unique
-  titulo    String
-  resumo    String
-  conteudo  String // Texto estruturado do artigo
-  icone     String
+  id       Int    @id @default(autoincrement())
+  slug     String @unique
+  titulo   String
+  resumo   String
+  conteudo String // Texto estruturado do artigo
+  icone    String
 }
 
 model Faq {

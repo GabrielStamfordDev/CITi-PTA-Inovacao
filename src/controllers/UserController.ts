@@ -1,6 +1,11 @@
+import crypto from "crypto";
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import * as UserRepository from "../repositories/UserRepository";
+import { sendPasswordResetEmail } from "../services/MailService";
+
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+const MAX_RESET_ATTEMPTS = 5;
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -70,21 +75,118 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const recoverPassword = async (req: Request, res: Response) => {
+export const requestPasswordReset = async (req: Request, res: Response) => {
   try {
-    const { email, novaSenha } = req.body;
+    const { email } = req.body;
 
-    if (typeof email !== "string" || typeof novaSenha !== "string" || !email.trim() || !novaSenha) {
-      return res.status(400).json({ message: "Informe o email e a nova senha." });
+    if (typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({ message: "Informe um email válido." });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const genericMessage =
+      "Se o email estiver cadastrado, enviamos um código de 6 dígitos para sua caixa de entrada.";
+
+    const user = await UserRepository.findUserByEmail(normalizedEmail);
+    if (!user) {
+      return res.status(200).json({ message: genericMessage, deliveryMode: "email" });
+    }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const codeHash = await bcrypt.hash(code, 8);
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+    await UserRepository.invalidatePreviousResetTokens(user.id);
+    const createdToken = await UserRepository.createPasswordResetToken({
+      userId: user.id,
+      codeHash,
+      expiresAt,
+    });
+
+    try {
+      const deliveryMode = await sendPasswordResetEmail({
+        toEmail: user.email,
+        toName: user.nome,
+        code,
+      });
+
+      return res.status(200).json({
+        message:
+          deliveryMode === "console"
+            ? "Modo demo sem API de email: confira o código no terminal do servidor."
+            : genericMessage,
+        deliveryMode,
+      });
+    } catch (mailError) {
+      await UserRepository.markResetTokenUsed(createdToken.id);
+      console.error("Erro ao enviar email de recuperação:", mailError);
+      return res.status(500).json({
+        message: "Não foi possível enviar o email de recuperação. Verifique as chaves no .env.",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao solicitar recuperação de senha." });
+  }
+};
+
+export const confirmPasswordReset = async (req: Request, res: Response) => {
+  try {
+    const { email, codigo, novaSenha } = req.body;
+
+    if (
+      typeof email !== "string" ||
+      typeof codigo !== "string" ||
+      typeof novaSenha !== "string" ||
+      !email.trim() ||
+      !codigo.trim() ||
+      !novaSenha
+    ) {
+      return res.status(400).json({ message: "Preencha email, código e nova senha." });
+    }
+
+    const cleanCode = codigo.trim();
+    if (!/^\d{6}$/.test(cleanCode)) {
+      return res.status(400).json({ message: "O código deve conter 6 dígitos numéricos." });
+    }
+
+    if (novaSenha.length < 6) {
+      return res.status(400).json({ message: "A nova senha deve ter pelo menos 6 caracteres." });
     }
 
     const user = await UserRepository.findUserByEmail(email.trim().toLowerCase());
     if (!user) {
-      return res.status(404).json({ message: "Email não encontrado no sistema." });
+      return res.status(400).json({ message: "Código inválido ou expirado." });
+    }
+
+    const token = await UserRepository.findLatestActiveResetToken(user.id);
+    if (!token) {
+      return res.status(400).json({ message: "Código inválido ou expirado. Solicite um novo." });
+    }
+
+    if (token.expiresAt <= new Date()) {
+      await UserRepository.markResetTokenUsed(token.id);
+      return res.status(400).json({ message: "Código expirado. Solicite um novo código." });
+    }
+
+    if (token.attempts >= MAX_RESET_ATTEMPTS) {
+      await UserRepository.markResetTokenUsed(token.id);
+      return res
+        .status(429)
+        .json({ message: "Limite de tentativas excedido. Solicite um novo código." });
+    }
+
+    const isMatch = await bcrypt.compare(cleanCode, token.codeHash);
+    if (!isMatch) {
+      const updated = await UserRepository.incrementResetTokenAttempts(token.id);
+      if (updated.attempts >= MAX_RESET_ATTEMPTS) {
+        await UserRepository.markResetTokenUsed(token.id);
+      }
+      return res.status(400).json({ message: "Código inválido ou expirado." });
     }
 
     const hashed = await bcrypt.hash(novaSenha, 8);
-    await UserRepository.updatePasswordByEmail(user.email, hashed);
+    await UserRepository.completePasswordReset(user.id, token.id, hashed);
 
     return res.status(200).json({ message: "Senha redefinida com sucesso!" });
   } catch (error) {

@@ -27,6 +27,13 @@ function showToast(message) {
 
 function navigate(screenId, pushHistory = true) {
   fecharAvisoSemInscricao();
+  resetPasswordVisibility();
+
+  if (screenId === "screen-recover") {
+    setRecoverStep(1);
+    document.getElementById("rec-codigo").value = "";
+    document.getElementById("rec-senha").value = "";
+  }
 
   const currentActive = document.querySelector(".screen.active");
   if (currentActive && pushHistory && currentActive.id !== screenId) {
@@ -52,6 +59,39 @@ function navigate(screenId, pushHistory = true) {
   document.getElementById("bottom-nav").classList.toggle("hidden", hideBottom);
 
   lucide.createIcons();
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input || !btn) return;
+
+  const showPassword = input.type === "password";
+  input.type = showPassword ? "text" : "password";
+
+  const eyeIcon = btn.querySelector(".icon-eye");
+  const eyeOffIcon = btn.querySelector(".icon-eye-off");
+  if (eyeIcon) eyeIcon.classList.toggle("hidden", showPassword);
+  if (eyeOffIcon) eyeOffIcon.classList.toggle("hidden", !showPassword);
+
+  const label = showPassword ? "Ocultar senha" : "Mostrar senha";
+  btn.setAttribute("aria-label", label);
+  btn.setAttribute("title", label);
+}
+
+function resetPasswordVisibility() {
+  document.querySelectorAll("button[onclick^='togglePasswordVisibility']").forEach((btn) => {
+    const eyeIcon = btn.querySelector(".icon-eye");
+    const eyeOffIcon = btn.querySelector(".icon-eye-off");
+    if (eyeIcon) eyeIcon.classList.remove("hidden");
+    if (eyeOffIcon) eyeOffIcon.classList.add("hidden");
+    btn.setAttribute("aria-label", "Mostrar senha");
+    btn.setAttribute("title", "Mostrar senha");
+  });
+
+  ["reg-senha", "login-senha", "rec-senha"].forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.type = "password";
+  });
 }
 
 function goBack() {
@@ -468,16 +508,93 @@ document.getElementById("form-register").addEventListener("submit", async (e) =>
   }
 });
 
-document.getElementById("form-recover").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("rec-email").value;
-  const novaSenha = document.getElementById("rec-senha").value;
+function setRecoverStep(step, customMessage) {
+  const step1 = document.getElementById("form-recover-request");
+  const step2 = document.getElementById("form-recover-confirm");
+  if (!step1 || !step2) return;
+
+  if (step === 2) {
+    const email = document.getElementById("rec-email").value.trim();
+    if (!email) {
+      showToast("Informe seu email primeiro.");
+      step1.classList.remove("hidden");
+      step2.classList.add("hidden");
+      return;
+    }
+    step1.classList.add("hidden");
+    step2.classList.remove("hidden");
+    document.getElementById("rec-status-msg").textContent =
+      customMessage ||
+      `Digite o código de 6 dígitos enviado para ${email} e escolha sua nova senha.`;
+  } else {
+    step2.classList.add("hidden");
+    step1.classList.remove("hidden");
+  }
+}
+
+async function solicitarCodigoRecuperacao() {
+  const email = document.getElementById("rec-email").value.trim();
+  const btn = document.getElementById("btn-rec-request");
+  if (!email) {
+    showToast("Informe o email cadastrado.");
+    return;
+  }
+
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = "Enviando...";
 
   try {
-    const res = await fetch("/api/auth/recover", {
+    const res = await fetch("/api/auth/recover/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, novaSenha }),
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.message || "Erro ao enviar código.");
+      return;
+    }
+
+    showToast(data.message);
+    const stepMsg =
+      data.deliveryMode === "console"
+        ? `Modo demo: confira o código de 6 dígitos no terminal do servidor para ${email}.`
+        : `Enviamos um código de 6 dígitos para ${email}. Ele expira em 15 minutos.`;
+    setRecoverStep(2, stepMsg);
+  } catch (err) {
+    showToast("Erro ao conectar ao servidor.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function reenviarCodigoRecuperacao() {
+  await solicitarCodigoRecuperacao();
+}
+
+document.getElementById("form-recover-request").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await solicitarCodigoRecuperacao();
+});
+
+document.getElementById("form-recover-confirm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("rec-email").value.trim();
+  const codigo = document.getElementById("rec-codigo").value.trim();
+  const novaSenha = document.getElementById("rec-senha").value;
+  const btn = document.getElementById("btn-rec-confirm");
+
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = "Validando...";
+
+  try {
+    const res = await fetch("/api/auth/recover/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, codigo, novaSenha }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -486,9 +603,14 @@ document.getElementById("form-recover").addEventListener("submit", async (e) => 
     }
 
     showToast("Senha atualizada com sucesso!");
+    document.getElementById("rec-codigo").value = "";
+    document.getElementById("rec-senha").value = "";
     navigate("screen-login", false);
   } catch (err) {
     showToast("Erro ao conectar ao servidor.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 });
 
