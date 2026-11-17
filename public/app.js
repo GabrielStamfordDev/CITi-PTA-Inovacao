@@ -221,7 +221,131 @@ function setSpeechBtnState(btnId, speaking) {
   btn.setAttribute("aria-pressed", speaking ? "true" : "false");
 }
 
+const MESES_PT = [
+  "",
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+let cachedVoices = [];
+let speechCancelled = false;
+
+function refreshAvailableVoices() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    cachedVoices = window.speechSynthesis.getVoices() || [];
+  }
+}
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  refreshAvailableVoices();
+  window.speechSynthesis.addEventListener("voiceschanged", refreshAvailableVoices);
+}
+
+function pickBestPortugueseVoice() {
+  const voices = cachedVoices.length ? cachedVoices : window.speechSynthesis.getVoices() || [];
+  const ptVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
+  if (!ptVoices.length) return null;
+
+  const scoreVoice = (v) => {
+    const lang = (v.lang || "").toLowerCase();
+    const name = (v.name || "").toLowerCase();
+    let score = 0;
+
+    if (lang === "pt-br") score += 50;
+    else if (lang.startsWith("pt-br")) score += 45;
+    else score += 10;
+
+    if (name.includes("natural") || name.includes("neural")) score += 100;
+    if (name.includes("francisca") || name.includes("thalita") || name.includes("antonio")) score += 30;
+    if (name.includes("online")) score += 40;
+    if (name.includes("google")) score += 35;
+    if (v.localService === false) score += 20;
+    if (name.includes("maria") || name.includes("daniel") || name.includes("espeak")) score -= 20;
+
+    return score;
+  };
+
+  return [...ptVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+}
+
+function formatTextForSpeech(rawText) {
+  let text = String(rawText || "");
+
+  // Quebras de bloco e marcadores viram pausas naturais
+  text = text.replace(/\n{2,}/g, ". ");
+  text = text.replace(/[•▪◦]/g, ", ");
+  text = text.replace(/\n/g, ", ");
+
+  // Datas completas dd/mm/aaaa -> "15 de maio de 1972"
+  text = text.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, (_, d, m, y) => {
+    const day = Number(d);
+    const month = Number(m);
+    const monthName = MESES_PT[month];
+    if (!monthName || day < 1 || day > 31) return `${d} do ${m} de ${y}`;
+    const dayStr = day === 1 ? "primeiro" : String(day);
+    return `${dayStr} de ${monthName} de ${y}`;
+  });
+
+  // Datas curtas dd/mm -> "primeiro de abril", "5 de novembro"
+  text = text.replace(/\b(\d{1,2})\/(\d{1,2})\b/g, (_, d, m) => {
+    const day = Number(d);
+    const month = Number(m);
+    const monthName = MESES_PT[month];
+    if (!monthName || day < 1 || day > 31) return `${d} do ${m}`;
+    const dayStr = day === 1 ? "primeiro" : String(day);
+    return `${dayStr} de ${monthName}`;
+  });
+
+  // Horários tipo "18:00h" ou "08:30h" ou "18:00"
+  text = text.replace(/\b(\d{1,2}):(\d{2})\s*h?\b/gi, (_, h, min) => {
+    const hour = Number(h);
+    const minute = Number(min);
+    const hourWord = hour === 1 ? "1 hora" : `${hour} horas`;
+    return minute === 0 ? hourWord : `${hourWord} e ${minute} minutos`;
+  });
+
+  // Ordinais e símbolos comuns
+  text = text.replace(/\b10[°º]/g, "décimo");
+  text = text.replace(/(\d+)[°º]/g, "$1º");
+  text = text.replace(/@([a-zA-Z0-9_.]+)/g, "arroba $1");
+  text = text.replace(/\bDA\b/g, "Doença de Alzheimer");
+  text = text.replace(/\s+-\s+/g, ", ");
+  text = text.replace(/\s+/g, " ").trim();
+
+  return text;
+}
+
+function splitSpeechChunks(text) {
+  const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+  const chunks = [];
+  let current = "";
+
+  for (const s of sentences) {
+    const trimmed = s.trim();
+    if (!trimmed) continue;
+    if ((current + " " + trimmed).length > 180 && current) {
+      chunks.push(current.trim());
+      current = trimmed;
+    } else {
+      current = current ? `${current} ${trimmed}` : trimmed;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
 function stopSpeech() {
+  speechCancelled = true;
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     window.speechSynthesis.cancel();
   }
@@ -241,36 +365,49 @@ function toggleSpeech(btnId, textKey) {
   stopSpeech();
   if (wasSameButton) return;
 
-  const text = speechTexts[textKey];
-  if (!text) return;
+  const rawText = speechTexts[textKey];
+  if (!rawText) return;
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "pt-BR";
-  utterance.rate = 0.96;
+  const naturalText = formatTextForSpeech(rawText);
+  const chunks = splitSpeechChunks(naturalText);
+  if (!chunks.length) return;
 
-  const voices = window.speechSynthesis.getVoices();
-  const ptVoice =
-    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("pt-br")) ||
-    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
-  if (ptVoice) utterance.voice = ptVoice;
-
+  const voice = pickBestPortugueseVoice();
+  speechCancelled = false;
   activeSpeechBtnId = btnId;
   setSpeechBtnState(btnId, true);
 
-  utterance.onend = () => {
-    if (activeSpeechBtnId === btnId) {
-      setSpeechBtnState(btnId, false);
-      activeSpeechBtnId = null;
+  let idx = 0;
+  function speakNextChunk() {
+    if (speechCancelled || idx >= chunks.length) {
+      if (activeSpeechBtnId === btnId) {
+        setSpeechBtnState(btnId, false);
+        activeSpeechBtnId = null;
+      }
+      return;
     }
-  };
-  utterance.onerror = () => {
-    if (activeSpeechBtnId === btnId) {
-      setSpeechBtnState(btnId, false);
-      activeSpeechBtnId = null;
-    }
-  };
 
-  window.speechSynthesis.speak(utterance);
+    const utterance = new SpeechSynthesisUtterance(chunks[idx]);
+    utterance.lang = "pt-BR";
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    if (voice) utterance.voice = voice;
+
+    utterance.onend = () => {
+      idx++;
+      speakNextChunk();
+    };
+    utterance.onerror = () => {
+      if (activeSpeechBtnId === btnId) {
+        setSpeechBtnState(btnId, false);
+        activeSpeechBtnId = null;
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  speakNextChunk();
 }
 
 function buildSpeechButtonHtml(btnId, textKey, idleLabel = "Ouvir texto", compact = false) {
