@@ -3,9 +3,27 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import * as UserRepository from "../repositories/UserRepository";
 import { sendPasswordResetEmail } from "../services/MailService";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
+import {
+  AUTH_COOKIE_NAME,
+  AUTH_TOKEN_TTL_MS,
+  signAuthToken,
+} from "../utils/authToken";
 
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
+
+function attachAuthSession(res: Response, userId: number, email: string): string {
+  const token = signAuthToken(userId, email);
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: AUTH_TOKEN_TTL_MS,
+    secure: process.env.NODE_ENV === "production",
+  });
+  return token;
+}
 
 function sanitizeOptionalString(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -133,7 +151,8 @@ export const register = async (req: Request, res: Response) => {
       estado: sanitizeOptionalString(estado),
     });
 
-    return res.status(201).json(user);
+    const token = attachAuthSession(res, user.id, user.email);
+    return res.status(201).json({ ...user, token });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao registrar usuário." });
@@ -158,6 +177,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Email ou senha incorretos." });
     }
 
+    const token = attachAuthSession(res, user.id, user.email);
     return res.status(200).json({
       id: user.id,
       nome: user.nome,
@@ -170,11 +190,17 @@ export const login = async (req: Request, res: Response) => {
       cidade: user.cidade,
       estado: user.estado,
       createdAt: user.createdAt,
+      token,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao realizar login." });
   }
+};
+
+export const logout = async (_req: Request, res: Response) => {
+  res.clearCookie(AUTH_COOKIE_NAME, { path: "/" });
+  return res.status(200).json({ message: "Sessão encerrada com sucesso." });
 };
 
 export const requestPasswordReset = async (req: Request, res: Response) => {
@@ -297,11 +323,36 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
   }
 };
 
-export const getProfile = async (req: Request, res: Response) => {
+export const getMe = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.authUserId) {
+      return res.status(401).json({ message: "Sessão não autenticada." });
+    }
+
+    const user = await UserRepository.findUserById(req.authUserId);
+    if (!user) {
+      res.clearCookie(AUTH_COOKIE_NAME, { path: "/" });
+      return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao buscar usuário." });
+  }
+};
+
+export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = Number(req.params.id);
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({ message: "Usuário inválido." });
+    }
+
+    if (userId !== req.authUserId) {
+      return res
+        .status(403)
+        .json({ message: "Acesso negado: você não pode visualizar o perfil de outro usuário." });
     }
 
     const user = await UserRepository.findUserById(userId);
@@ -316,57 +367,79 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProfile = async (req: Request, res: Response) => {
+async function performProfileUpdate(userId: number, body: any, res: Response) {
+  const existing = await UserRepository.findUserById(userId);
+  if (!existing) {
+    return res.status(404).json({ message: "Usuário não encontrado." });
+  }
+
+  const {
+    nome,
+    dataNascimento,
+    idade,
+    pessoaComAlzheimer,
+    parentesco,
+    estagioDaDoenca,
+    cidade,
+    estado,
+  } = body || {};
+
+  if (typeof nome !== "string" || !nome.trim()) {
+    return res.status(400).json({ message: "O nome não pode ficar vazio." });
+  }
+
+  const parsedBirth = parseBirthDate(dataNascimento);
+  if (!parsedBirth.valid) {
+    return res
+      .status(400)
+      .json({ message: "Informe uma data de nascimento válida no formato dd/mm/aaaa." });
+  }
+
+  const parsedAge = parseOptionalAge(idade);
+  if (!parsedAge.valid) {
+    return res.status(400).json({ message: "Informe uma idade válida (entre 10 e 120 anos)." });
+  }
+
+  const updated = await UserRepository.updateUserProfile(userId, {
+    nome: nome.trim(),
+    dataNascimento: parsedBirth.dataNascimento,
+    idade: parsedBirth.idade ?? parsedAge.value,
+    pessoaComAlzheimer: sanitizeOptionalString(pessoaComAlzheimer),
+    parentesco: sanitizeOptionalString(parentesco),
+    estagioDaDoenca: sanitizeOptionalString(estagioDaDoenca),
+    cidade: sanitizeOptionalString(cidade),
+    estado: sanitizeOptionalString(estado),
+  });
+
+  return res.status(200).json(updated);
+}
+
+export const updateMe = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.authUserId) {
+      return res.status(401).json({ message: "Sessão não autenticada." });
+    }
+    return await performProfileUpdate(req.authUserId, req.body, res);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao atualizar perfil." });
+  }
+};
+
+export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = Number(req.params.id);
     if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(400).json({ message: "Usuário inválido." });
     }
 
-    const existing = await UserRepository.findUserById(userId);
-    if (!existing) {
-      return res.status(404).json({ message: "Usuário não encontrado." });
-    }
-
-    const {
-      nome,
-      dataNascimento,
-      idade,
-      pessoaComAlzheimer,
-      parentesco,
-      estagioDaDoenca,
-      cidade,
-      estado,
-    } = req.body;
-
-    if (typeof nome !== "string" || !nome.trim()) {
-      return res.status(400).json({ message: "O nome não pode ficar vazio." });
-    }
-
-    const parsedBirth = parseBirthDate(dataNascimento);
-    if (!parsedBirth.valid) {
+    if (userId !== req.authUserId) {
       return res
-        .status(400)
-        .json({ message: "Informe uma data de nascimento válida no formato dd/mm/aaaa." });
+        .status(403)
+        .json({ message: "Acesso negado: você não pode alterar o perfil de outro usuário." });
     }
 
-    const parsedAge = parseOptionalAge(idade);
-    if (!parsedAge.valid) {
-      return res.status(400).json({ message: "Informe uma idade válida (entre 10 e 120 anos)." });
-    }
-
-    const updated = await UserRepository.updateUserProfile(userId, {
-      nome: nome.trim(),
-      dataNascimento: parsedBirth.dataNascimento,
-      idade: parsedBirth.idade ?? parsedAge.value,
-      pessoaComAlzheimer: sanitizeOptionalString(pessoaComAlzheimer),
-      parentesco: sanitizeOptionalString(parentesco),
-      estagioDaDoenca: sanitizeOptionalString(estagioDaDoenca),
-      cidade: sanitizeOptionalString(cidade),
-      estado: sanitizeOptionalString(estado),
-    });
-
-    return res.status(200).json(updated);
+    return await performProfileUpdate(userId, req.body, res);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao atualizar perfil." });

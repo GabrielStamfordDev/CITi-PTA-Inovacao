@@ -2,17 +2,19 @@ import { Request, Response } from "express";
 import * as AppRepository from "../repositories/AppRepository";
 import * as UserRepository from "../repositories/UserRepository";
 import * as AssistantService from "../services/AssistantService";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
-export const getInitialData = async (req: Request, res: Response) => {
+export const getInitialData = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const parsedUserId = req.query.userId ? Number(req.query.userId) : undefined;
-    const userId =
-      parsedUserId && Number.isInteger(parsedUserId) && parsedUserId > 0
-        ? parsedUserId
-        : undefined;
+    const authUserId = req.authUserId;
+    if (req.query.userId !== undefined && Number(req.query.userId) !== authUserId) {
+      return res
+        .status(403)
+        .json({ message: "Acesso negado: parâmetro userId não corresponde ao usuário autenticado." });
+    }
 
     const [eventos, links, artigos, faqs] = await Promise.all([
-      AppRepository.findAllEventos(userId),
+      AppRepository.findAllEventos(authUserId),
       AppRepository.findAllLinks(),
       AppRepository.findAllArtigos(),
       AppRepository.findAllFaqs(),
@@ -25,13 +27,23 @@ export const getInitialData = async (req: Request, res: Response) => {
   }
 };
 
-export const toggleInscricao = async (req: Request, res: Response) => {
+export const toggleInscricao = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const eventoId = Number(req.params.id);
-    const userId = Number(req.body?.userId);
+    const userId = req.authUserId;
 
-    if (!Number.isInteger(userId) || userId <= 0 || !Number.isInteger(eventoId) || eventoId <= 0) {
-      return res.status(400).json({ message: "Usuário e evento são obrigatórios." });
+    if (!userId || !Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: "Sessão não autenticada. Faça login novamente." });
+    }
+
+    if (req.body?.userId !== undefined && req.body?.userId !== null && Number(req.body.userId) !== userId) {
+      return res
+        .status(403)
+        .json({ message: "Acesso negado: você só pode gerenciar inscrições da sua própria conta." });
+    }
+
+    if (!Number.isInteger(eventoId) || eventoId <= 0) {
+      return res.status(400).json({ message: "Evento inválido." });
     }
 
     const result = await AppRepository.toggleInscricaoEvento(userId, eventoId);
@@ -56,7 +68,7 @@ export const getAssistantSources = async (_req: Request, res: Response) => {
   }
 };
 
-export const askAssistant = async (req: Request, res: Response) => {
+export const askAssistant = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const question = String(req.body?.question || "").trim();
     if (!question) {
@@ -68,16 +80,21 @@ export const askAssistant = async (req: Request, res: Response) => {
         .json({ message: "Sua pergunta ficou muito longa. Tente resumir em menos caracteres." });
     }
 
-    const parsedUserId = req.body?.userId ? Number(req.body.userId) : undefined;
-    const validUserId =
-      parsedUserId && Number.isInteger(parsedUserId) && parsedUserId > 0
-        ? parsedUserId
-        : undefined;
+    const authUserId = req.authUserId;
+    if (
+      req.body?.userId !== undefined &&
+      req.body?.userId !== null &&
+      Number(req.body.userId) !== authUserId
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Acesso negado: não é permitido consultar contexto pessoal de outro usuário." });
+    }
 
     let userContext = null;
-    if (validUserId) {
+    if (authUserId) {
       try {
-        userContext = await UserRepository.findUserById(validUserId);
+        userContext = await UserRepository.findUserById(authUserId);
       } catch {
         userContext = null;
       }

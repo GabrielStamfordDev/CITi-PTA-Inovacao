@@ -178,6 +178,25 @@ function showToast(message) {
   }, 2800);
 }
 
+function setCurrentUser(rawUser) {
+  if (!rawUser) {
+    currentUser = null;
+    localStorage.removeItem("cuida_user");
+    return;
+  }
+  // Nunca persiste token no localStorage; a sessão trafega em cookie HttpOnly
+  const { token: _ignoredToken, ...safeProfile } = rawUser;
+  currentUser = safeProfile;
+  localStorage.setItem("cuida_user", JSON.stringify(safeProfile));
+}
+
+function authFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    credentials: "same-origin",
+  });
+}
+
 // ==================================================
 // ACESSIBILIDADE SÊNIOR (Tamanho do texto + Leitura em voz alta)
 // ==================================================
@@ -541,11 +560,15 @@ function goHome() {
   navigate("screen-home", false);
 }
 
-function logout() {
-  currentUser = null;
+async function logout() {
+  try {
+    await authFetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Limpa estado local mesmo em falha transitória de rede
+  }
+  setCurrentUser(null);
   isEditingProfile = false;
   if (typeof resetAssistantState === "function") resetAssistantState();
-  localStorage.removeItem("cuida_user");
   navHistory = [];
   navigate("screen-welcome", false);
 }
@@ -557,8 +580,7 @@ function updateHomeGreeting(nome) {
 
 async function loadAppData() {
   try {
-    const query = currentUser ? `?userId=${currentUser.id}` : "";
-    const res = await fetch(`/api/dados${query}`);
+    const res = await authFetch("/api/dados");
     if (!res.ok) throw new Error("Erro ao carregar dados");
     appData = await res.json();
 
@@ -683,16 +705,15 @@ async function toggleInscricao(eventoId) {
   }
 
   try {
-    const res = await fetch(`/api/eventos/${eventoId}/inscricao`, {
+    const res = await authFetch(`/api/eventos/${eventoId}/inscricao`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: currentUser.id }),
     });
     const data = await res.json();
     if (!res.ok) {
       showToast(data.message || "Erro na inscrição");
-      if (res.status === 404 && String(data.message || "").includes("Sessão expirada")) {
-        logout();
+      if (res.status === 401 || (res.status === 404 && String(data.message || "").includes("Sessão expirada"))) {
+        await logout();
       }
       return;
     }
@@ -1141,7 +1162,7 @@ async function saveProfile(e) {
   };
 
   try {
-    const res = await fetch(`/api/auth/user/${currentUser.id}`, {
+    const res = await authFetch("/api/auth/me", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -1149,11 +1170,11 @@ async function saveProfile(e) {
     const data = await res.json();
     if (!res.ok) {
       showToast(data.message || "Erro ao salvar perfil.");
+      if (res.status === 401) await logout();
       return;
     }
 
-    currentUser = data;
-    localStorage.setItem("cuida_user", JSON.stringify(currentUser));
+    setCurrentUser(data);
     updateHomeGreeting(currentUser.nome);
     isEditingProfile = false;
     renderProfile();
@@ -1254,7 +1275,7 @@ document.getElementById("form-register").addEventListener("submit", async (e) =>
   btn.textContent = "Criando conta...";
 
   try {
-    const res = await fetch("/api/auth/register", {
+    const res = await authFetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1275,11 +1296,10 @@ document.getElementById("form-register").addEventListener("submit", async (e) =>
       return;
     }
 
-    currentUser = data;
-    localStorage.setItem("cuida_user", JSON.stringify(data));
+    setCurrentUser(data);
     document.getElementById("form-register").reset();
     setRegisterStep(1);
-    updateHomeGreeting(data.nome);
+    updateHomeGreeting(currentUser.nome);
     showToast("Cadastro realizado!");
     await loadAppData();
     goHome();
@@ -1297,7 +1317,7 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
   const senha = document.getElementById("login-senha").value;
 
   try {
-    const res = await fetch("/api/auth/login", {
+    const res = await authFetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, senha }),
@@ -1308,9 +1328,8 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
       return;
     }
 
-    currentUser = data;
-    localStorage.setItem("cuida_user", JSON.stringify(data));
-    updateHomeGreeting(data.nome);
+    setCurrentUser(data);
+    updateHomeGreeting(currentUser.nome);
     await loadAppData();
     goHome();
   } catch (err) {
@@ -1778,12 +1797,11 @@ async function sendAssistantQuestion(rawQuestion) {
   renderAssistantMessages("to-question");
 
   try {
-    const res = await fetch("/api/assistente/perguntar", {
+    const res = await authFetch("/api/assistente/perguntar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question,
-        userId: currentUser?.id || null,
         history,
       }),
     });
@@ -1832,19 +1850,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   const saved = localStorage.getItem("cuida_user");
   if (saved) {
     try {
-      const parsed = JSON.parse(saved);
-      const check = await fetch(`/api/auth/user/${parsed.id}`);
+      const check = await authFetch("/api/auth/me");
       if (!check.ok) {
-        localStorage.removeItem("cuida_user");
+        setCurrentUser(null);
         return;
       }
-      currentUser = await check.json();
-      localStorage.setItem("cuida_user", JSON.stringify(currentUser));
+      setCurrentUser(await check.json());
       updateHomeGreeting(currentUser.nome);
       await loadAppData();
       goHome();
     } catch {
-      localStorage.removeItem("cuida_user");
+      setCurrentUser(null);
     }
   }
 });
