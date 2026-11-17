@@ -12,6 +12,11 @@ model User {
   nome                String
   email               String               @unique
   senha               String
+  idade               Int?
+  pessoaComAlzheimer  String?
+  parentesco          String?
+  estagioDaDoenca     String?
+  cidade              String?
   inscricoes          Inscricao[]
   passwordResetTokens PasswordResetToken[]
   createdAt           DateTime             @default(now())

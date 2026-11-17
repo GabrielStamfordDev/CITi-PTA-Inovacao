@@ -4,12 +4,13 @@ import * as AppController from "./controllers/AppController";
 
 const routes = express.Router();
 
-// Autenticação e Recuperação de Senha por E-mail
+// Autenticação, Perfil e Recuperação de Senha por E-mail
 routes.post("/api/auth/register", UserController.register);
 routes.post("/api/auth/login", UserController.login);
 routes.post("/api/auth/recover/request", UserController.requestPasswordReset);
 routes.post("/api/auth/recover/confirm", UserController.confirmPasswordReset);
 routes.get("/api/auth/user/:id", UserController.getProfile);
+routes.put("/api/auth/user/:id", UserController.updateProfile);
 
 // Conteúdos e Eventos do CuiDA
 routes.get("/api/dados", AppController.getInitialData);

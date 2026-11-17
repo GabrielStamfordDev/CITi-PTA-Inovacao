@@ -19,8 +19,9 @@
       font-family: 'Nunito', 'Inter', sans-serif;
     }
 
-    /* Moldura mobile fiel ao frame do protótipo no Figma */
+    /* Moldura padrão mobile fiel ao frame do protótipo no Figma */
     .app-shell {
+      width: 100%;
       max-width: 412px;
       height: 100vh;
       height: 100dvh;
@@ -31,22 +32,71 @@
       position: relative;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
       overflow: hidden;
+      transition: max-width 0.22s ease, border-radius 0.22s ease;
     }
 
-    @media (min-width: 640px) {
+    @media (min-width: 768px) {
       body {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        padding: 16px 0;
+        padding: 12px 16px 18px;
+        gap: 10px;
       }
 
       .app-shell {
-        width: 100%;
-        height: min(852px, calc(100vh - 32px));
+        height: min(840px, calc(100vh - 76px));
         border-radius: 38px;
         border: 6px solid #18181b;
+      }
+
+      /* Modo Site PC Responsivo */
+      body.desktop-mode .app-shell {
+        max-width: 960px;
+        height: min(840px, calc(100vh - 76px));
+        border-radius: 24px;
+        border: 1px solid #d4d4d8;
+      }
+
+      body.desktop-mode .desktop-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      body.desktop-mode .desktop-grid-2 > * {
+        margin-top: 0 !important;
+      }
+
+      body.desktop-mode .desktop-narrow {
+        max-width: 460px;
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      body.desktop-mode .desktop-readable {
+        max-width: 700px;
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      body.desktop-mode #home-actions {
+        max-width: 540px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      body.desktop-mode #home-actions > * {
+        margin-top: 0 !important;
+      }
+
+      body.desktop-mode #home-profile-btn {
+        grid-column: span 2 / span 2;
       }
     }
 
@@ -64,7 +114,7 @@
     }
 
     .screen::-webkit-scrollbar {
-      width: 4px;
+      width: 5px;
     }
     .screen::-webkit-scrollbar-thumb {
       background-color: rgba(124, 92, 196, 0.3);
@@ -116,17 +166,30 @@
       color: #4c1d95;
       border-radius: 12px;
     }
-    .input-lilac::placeholder {
+    .input-lilac::placeholder,
+    .input-lilac select:invalid {
       color: #6d5b98;
     }
   </style>
 </head>
 <body>
 
+  <!-- SELETOR DE TESTE MOBILE vs PC RESPONSIVO (Visível apenas em telas médias/grandes) -->
+  <div id="view-mode-bar" class="hidden md:flex items-center gap-1.5 bg-white/90 backdrop-blur border border-slate-300 rounded-full p-1 shadow-sm text-xs">
+    <button type="button" id="btn-mode-mobile" onclick="setViewMode('mobile')" class="px-3.5 py-1.5 rounded-full font-semibold transition flex items-center gap-1.5">
+      <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+      Mobile (Protótipo)
+    </button>
+    <button type="button" id="btn-mode-desktop" onclick="setViewMode('desktop')" class="px-3.5 py-1.5 rounded-full font-semibold transition flex items-center gap-1.5">
+      <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
+      Site PC (Responsivo)
+    </button>
+  </div>
+
   <div class="app-shell">
 
     <!-- TOAST DE FEEDBACK -->
-    <div id="toast" class="hidden absolute top-5 left-1/2 -translate-x-1/2 z-50 w-[85%] bg-[#5f259f] text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg text-center"></div>
+    <div id="toast" class="hidden absolute top-5 left-1/2 -translate-x-1/2 z-50 w-[85%] max-w-sm bg-[#5f259f] text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg text-center"></div>
 
     <!-- MODAL DE AVISO DO WEBINÁRIO (Frame 00:08 a 00:10) -->
     <div id="webinario-modal" onclick="fecharAvisoSemInscricao()" class="hidden absolute inset-0 z-40 bg-black/25 backdrop-blur-[1px] flex items-center justify-center px-7">
@@ -142,31 +205,37 @@
     </div>
 
     <!-- ==========================================
-         TELA 1: START PAGE (Frames 00:00 - 00:01)
+         TELA 1: CAPA / START PAGE
+         (2 circunferências não concêntricas dentro da parte roxa)
     =========================================== -->
     <section id="screen-welcome" class="screen active justify-between p-0">
-      <!-- Topo em Onda Roxa Assimétrica com Círculo CuiDA grande -->
-      <div class="relative w-full h-[345px] shrink-0 flex items-center justify-center">
-        <svg viewBox="0 0 412 345" preserveAspectRatio="none" class="absolute inset-0 w-full h-full">
-          <path d="M0,0 L412,0 L412,248 C332,216 244,328 135,332 C68,334 26,306 0,278 Z" fill="#6f2dbd" />
+      <!-- Topo Roxo com 2 Circunferências Não Concêntricas (sem distorção no PC) -->
+      <div class="relative w-full h-[355px] shrink-0 overflow-hidden flex items-center justify-center">
+        <svg viewBox="0 0 412 365" preserveAspectRatio="none" class="absolute inset-0 w-full h-full">
+          <!-- Fundo roxo com curva ajustada para comportar as duas circunferências -->
+          <path d="M0,0 L412,0 L412,265 C356,312 288,358 196,358 C108,358 44,322 0,278 Z" fill="#6f2dbd" />
         </svg>
-        <div class="relative z-10 w-56 h-56 bg-[#f7f4ef] rounded-full flex items-center justify-center shadow-lg ring-4 ring-white/25 -mt-4">
-          <span class="font-brand text-[46px] font-black text-[#5b21b6] tracking-tight">CuiDA</span>
-        </div>
+        <svg viewBox="0 0 320 320" class="relative z-10 w-[300px] h-[300px] -mt-3">
+          <!-- 2ª Circunferência (não concêntrica, deslocada para esquerda/cima dentro da parte roxa) -->
+          <circle cx="146" cy="154" r="134" fill="#8b4be0" fill-opacity="0.45" stroke="#e9d5ff" stroke-opacity="0.55" stroke-width="2" />
+          <!-- 1ª Circunferência clara envolvendo o título CuiDA (deslocada para direita/baixo) -->
+          <circle cx="168" cy="162" r="102" fill="#f7f4ef" />
+          <text x="168" y="175" text-anchor="middle" fill="#5b21b6" font-family="Nunito, Inter, sans-serif" font-size="44" font-weight="900" letter-spacing="-0.5">CuiDA</text>
+        </svg>
       </div>
 
-      <!-- Texto Central -->
-      <div class="px-9 text-center space-y-5 my-auto">
-        <p class="text-slate-600 text-[15px] leading-relaxed">
-          Apoio, informações e recursos para cuidadores de pessoas com Alzheimer.
+      <!-- Texto Central Profissional -->
+      <div class="px-9 text-center space-y-4 my-auto desktop-narrow">
+        <p class="text-slate-700 font-semibold text-[15px] leading-snug">
+          Cuidar de quem você ama fica mais leve com o apoio certo.
         </p>
-        <p class="text-slate-500 text-[15px] leading-relaxed">
-          Encontre eventos, dicas e suporte especializado
+        <p class="text-slate-500 text-[13.5px] leading-relaxed">
+          Reúna orientações confiáveis sobre o Alzheimer, grupos de acolhimento e eventos para fortalecer a sua rotina de cuidado.
         </p>
       </div>
 
       <!-- Botões Entrar e Registrar lado a lado -->
-      <div class="px-8 pb-8 flex items-center justify-between gap-4">
+      <div class="px-8 pb-8 pt-4 flex items-center justify-between gap-4 desktop-narrow">
         <button type="button" onclick="navigate('screen-login')" class="pill-btn-white flex-1 py-2.5 text-sm font-medium text-slate-700">
           Entrar
         </button>
@@ -177,58 +246,123 @@
     </section>
 
     <!-- ==========================================
-         TELA 2: REGISTRAR (Frame 00:02)
+         TELA 2: REGISTRAR (2 ETAPAS, COM CONFIRMAR SENHA, SEM "ESQUECEU SENHA")
     =========================================== -->
     <section id="screen-register" class="screen justify-between p-7">
-      <div></div>
+      <div class="text-center pt-1 desktop-narrow">
+        <p id="reg-step-badge" class="inline-block bg-purple-100 text-[#5b21b6] text-[11px] font-bold px-3 py-1 rounded-full">
+          Passo 1 de 2 • Acesso
+        </p>
+      </div>
 
-      <form id="form-register" class="space-y-4 my-auto">
-        <div class="input-lilac flex items-center px-4 py-3.5 gap-3">
-          <i data-lucide="user" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
-          <input type="text" id="reg-nome" required placeholder="Nome" class="bg-transparent w-full text-sm focus:outline-none" />
+      <form id="form-register" class="my-auto py-4 desktop-narrow">
+        <!-- ETAPA 1: DADOS DE ACESSO -->
+        <div id="reg-step-1" class="space-y-3.5">
+          <h2 class="text-center text-xl font-bold text-[#5b21b6] mb-1">Criar Conta</h2>
+          <p class="text-center text-xs text-slate-500 mb-3">Informe seus dados principais de acesso ao CuiDA.</p>
+
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="user" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="text" id="reg-nome" required placeholder="Nome completo" class="bg-transparent w-full text-sm focus:outline-none" />
+          </div>
+
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="mail" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="email" id="reg-email" required placeholder="Email" class="bg-transparent w-full text-sm focus:outline-none" />
+          </div>
+
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="lock" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="password" id="reg-senha" required minlength="6" placeholder="Senha (mín. 6 caracteres)" class="bg-transparent w-full text-sm focus:outline-none" />
+            <button type="button" onclick="togglePasswordVisibility('reg-senha', this)" aria-label="Mostrar senha" title="Mostrar senha" class="text-[#5b21b6]/80 hover:text-[#4c1d95] p-1 rounded-md focus:outline-none transition shrink-0">
+              <i data-lucide="eye" class="w-4 h-4 icon-eye"></i>
+              <i data-lucide="eye-off" class="w-4 h-4 icon-eye-off hidden"></i>
+            </button>
+          </div>
+
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="shield-check" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="password" id="reg-confirmar-senha" required minlength="6" placeholder="Confirmar senha" class="bg-transparent w-full text-sm focus:outline-none" />
+            <button type="button" onclick="togglePasswordVisibility('reg-confirmar-senha', this)" aria-label="Mostrar senha" title="Mostrar senha" class="text-[#5b21b6]/80 hover:text-[#4c1d95] p-1 rounded-md focus:outline-none transition shrink-0">
+              <i data-lucide="eye" class="w-4 h-4 icon-eye"></i>
+              <i data-lucide="eye-off" class="w-4 h-4 icon-eye-off hidden"></i>
+            </button>
+          </div>
+
+          <div class="pt-3 flex justify-center">
+            <button type="button" onclick="avancarEtapaRegistro()" class="pill-btn-purple px-12 py-2.5 text-sm font-semibold">
+              Continuar
+            </button>
+          </div>
         </div>
 
-        <div class="input-lilac flex items-center px-4 py-3.5 gap-3">
-          <i data-lucide="mail" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
-          <input type="email" id="reg-email" required placeholder="Email" class="bg-transparent w-full text-sm focus:outline-none" />
-        </div>
+        <!-- ETAPA 2: DADOS DO PERFIL DO CUIDADOR -->
+        <div id="reg-step-2" class="hidden space-y-3.5">
+          <h2 class="text-center text-xl font-bold text-[#5b21b6] mb-1">Sobre seu Cuidado</h2>
+          <p class="text-center text-xs text-slate-500 mb-3">Esses dados compõem o seu perfil para personalizar o apoio.</p>
 
-        <div class="input-lilac flex items-center px-4 py-3.5 gap-3">
-          <i data-lucide="lock" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
-          <input type="password" id="reg-senha" required placeholder="Senha" class="bg-transparent w-full text-sm focus:outline-none" />
-          <button type="button" onclick="togglePasswordVisibility('reg-senha', this)" aria-label="Mostrar senha" title="Mostrar senha" class="text-[#5b21b6]/80 hover:text-[#4c1d95] p-1 rounded-md focus:outline-none transition shrink-0">
-            <i data-lucide="eye" class="w-4 h-4 icon-eye"></i>
-            <i data-lucide="eye-off" class="w-4 h-4 icon-eye-off hidden"></i>
-          </button>
-        </div>
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="calendar" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="number" id="reg-idade" min="10" max="120" placeholder="Sua idade" class="bg-transparent w-full text-sm focus:outline-none" />
+          </div>
 
-        <div class="pt-3 flex justify-center">
-          <button type="submit" class="pill-btn-purple px-12 py-2.5 text-sm font-semibold">
-            Registrar
-          </button>
-        </div>
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="heart-handshake" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="text" id="reg-pessoa" placeholder="Pessoa próxima com Alzheimer (ex.: Minha mãe)" class="bg-transparent w-full text-sm focus:outline-none" />
+          </div>
 
-        <div class="text-center pt-1">
-          <button type="button" onclick="navigate('screen-recover')" class="text-xs text-[#7353ba] hover:underline">
-            Esqueceu a senha? clique aqui
-          </button>
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="users" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <select id="reg-parentesco" class="bg-transparent w-full text-sm focus:outline-none text-[#4c1d95]">
+              <option value="" disabled selected>Vínculo / Parentesco</option>
+              <option value="Filho(a)">Filho(a)</option>
+              <option value="Cônjuge">Cônjuge / Companheiro(a)</option>
+              <option value="Neto(a)">Neto(a)</option>
+              <option value="Outro familiar">Outro familiar</option>
+              <option value="Cuidador(a) profissional">Cuidador(a) profissional</option>
+              <option value="Amigo(a) / Outro">Amigo(a) / Outro</option>
+            </select>
+          </div>
+
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="activity" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <select id="reg-estagio" class="bg-transparent w-full text-sm focus:outline-none text-[#4c1d95]">
+              <option value="" selected>Estágio do Alzheimer (opcional)</option>
+              <option value="Em investigação">Em investigação / Suspeita</option>
+              <option value="Inicial (leve)">Fase inicial (leve)</option>
+              <option value="Moderado">Fase moderada</option>
+              <option value="Avançado">Fase avançada</option>
+              <option value="Prefiro não informar">Prefiro não informar</option>
+            </select>
+          </div>
+
+          <div class="input-lilac flex items-center px-4 py-3 gap-3">
+            <i data-lucide="map-pin" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
+            <input type="text" id="reg-cidade" placeholder="Cidade / Estado (opcional)" class="bg-transparent w-full text-sm focus:outline-none" />
+          </div>
+
+          <div class="pt-3 flex justify-center">
+            <button type="submit" id="btn-reg-submit" class="pill-btn-purple px-10 py-2.5 text-sm font-semibold">
+              Finalizar Cadastro
+            </button>
+          </div>
         </div>
       </form>
 
-      <div>
-        <button type="button" onclick="navigate('screen-welcome', false)" class="pill-btn-white px-7 py-2 text-xs font-medium text-slate-700">
+      <div class="desktop-narrow">
+        <button type="button" onclick="voltarRegistro()" class="pill-btn-white px-7 py-2 text-xs font-medium text-slate-700">
           Voltar
         </button>
       </div>
     </section>
 
     <!-- ==========================================
-         TELA 3: LOGIN
+         TELA 3: LOGIN (Sem texto de conta demo)
     =========================================== -->
     <section id="screen-login" class="screen justify-between p-7">
       <div></div>
 
-      <form id="form-login" class="space-y-4 my-auto">
+      <form id="form-login" class="space-y-4 my-auto desktop-narrow">
         <h2 class="text-center text-xl font-bold text-[#5b21b6] mb-3">Entrar no CuiDA</h2>
 
         <div class="input-lilac flex items-center px-4 py-3.5 gap-3">
@@ -251,21 +385,14 @@
           </button>
         </div>
 
-        <div class="text-center space-y-2 pt-1">
-          <div>
-            <button type="button" onclick="navigate('screen-recover')" class="text-xs text-[#7353ba] hover:underline">
-              Esqueceu a senha? clique aqui
-            </button>
-          </div>
-          <div>
-            <button type="button" onclick="preencherDemoLogin()" class="text-[11px] text-slate-400 hover:text-[#7353ba] transition">
-              Preencher conta demo (maria@cuida.com)
-            </button>
-          </div>
+        <div class="text-center pt-1">
+          <button type="button" onclick="navigate('screen-recover')" class="text-xs text-[#7353ba] hover:underline">
+            Esqueceu a senha? clique aqui
+          </button>
         </div>
       </form>
 
-      <div>
+      <div class="desktop-narrow">
         <button type="button" onclick="navigate('screen-welcome', false)" class="pill-btn-white px-7 py-2 text-xs font-medium text-slate-700">
           Voltar
         </button>
@@ -278,7 +405,7 @@
     <section id="screen-recover" class="screen justify-between p-7">
       <div></div>
 
-      <div class="my-auto">
+      <div class="my-auto desktop-narrow">
         <!-- Etapa 1: Solicitar código por e-mail -->
         <form id="form-recover-request" class="space-y-4">
           <h2 class="text-center text-xl font-bold text-[#5b21b6] mb-1">Recuperar Senha</h2>
@@ -343,7 +470,7 @@
         </form>
       </div>
 
-      <div>
+      <div class="desktop-narrow">
         <button type="button" onclick="navigate('screen-login', false)" class="pill-btn-white px-7 py-2 text-xs font-medium text-slate-700">
           Voltar
         </button>
@@ -351,29 +478,30 @@
     </section>
 
     <!-- ==========================================
-         TELA 5: HOME (Frames 00:03 - 00:04)
+         TELA 5: HOME / PÁGINA INICIAL (Frame 00:04)
+         Exatamente como o protótipo: CuiDA maior próximo ao topo e
+         apenas a parte inferior das duas circunferências aparecendo
     =========================================== -->
     <section id="screen-home" class="screen p-0">
-      <!-- Topo em Onda Roxa Assimétrica com Círculo CuiDA grande -->
-      <div class="relative w-full h-[240px] shrink-0 flex items-center justify-center">
-        <svg viewBox="0 0 412 240" preserveAspectRatio="none" class="absolute inset-0 w-full h-full">
-          <path d="M0,0 L412,0 L412,174 C335,146 248,226 140,229 C70,231 28,208 0,188 Z" fill="#6f2dbd" />
+      <div class="relative w-full h-[156px] shrink-0 overflow-hidden">
+        <svg viewBox="0 0 412 156" preserveAspectRatio="none" class="w-full h-full">
+          <!-- Circunferência externa roxa (não concêntrica, aparecendo só a parte inferior) -->
+          <circle cx="220" cy="-210" r="365" fill="#6f2dbd" />
+          <!-- Circunferência interna clara (não concêntrica, aparecendo só a parte inferior) -->
+          <circle cx="192" cy="-205" r="340" fill="#f7f4ef" />
         </svg>
-        <button type="button" onclick="logout()" class="absolute top-4 right-5 z-20 text-[11px] text-white/75 hover:text-white transition">
-          Sair
-        </button>
-        <div class="relative z-10 w-44 h-44 bg-[#f7f4ef] rounded-full flex items-center justify-center shadow-lg ring-4 ring-white/25 -mt-2">
-          <span class="font-brand text-[36px] font-black text-[#5b21b6] tracking-tight">CuiDA</span>
+        <div class="absolute inset-x-0 top-6 flex justify-center pointer-events-none">
+          <span class="font-brand text-[42px] font-black text-[#5b21b6] tracking-tight leading-none">CuiDA</span>
         </div>
       </div>
 
-      <!-- Saudação e 4 Botões Pílula Centralizados -->
-      <div class="px-8 pt-5 pb-8 flex-1 flex flex-col items-center">
-        <p id="home-greeting" class="text-center text-slate-600 text-[15px] mb-7 max-w-[235px] leading-relaxed">
+      <!-- Saudação e Botões Pílula Centralizados -->
+      <div class="px-8 pt-6 pb-8 flex-1 flex flex-col items-center">
+        <p id="home-greeting" class="text-center text-slate-600 text-[15px] mb-7 max-w-[260px] leading-relaxed">
           Olá, [nome], como posso te ajudar hoje?
         </p>
 
-        <div class="w-full max-w-[240px] space-y-4">
+        <div id="home-actions" class="w-full max-w-[245px] space-y-3.5">
           <button type="button" onclick="navigate('screen-eventos')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
             Eventos e Encontros
           </button>
@@ -389,6 +517,11 @@
           <button type="button" onclick="navigate('screen-faq')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
             Perguntas Frequentes
           </button>
+
+          <button type="button" id="home-profile-btn" onclick="openProfile()" class="pill-btn-white w-full py-3 text-sm font-semibold text-[#5b21b6] border-purple-200 flex items-center justify-center gap-2">
+            <i data-lucide="user-round" class="w-4 h-4"></i>
+            Meu Perfil
+          </button>
         </div>
       </div>
     </section>
@@ -400,19 +533,19 @@
       <div class="text-center mb-5">
         <h2 class="text-[26px] font-bold text-[#5b21b6] leading-tight">Eventos e<br/>Encontros</h2>
         <div class="w-56 h-px bg-[#7353ba] mx-auto my-3"></div>
-        <p class="text-xs text-slate-500 max-w-[230px] mx-auto leading-relaxed">
+        <p class="text-xs text-slate-500 max-w-[240px] mx-auto leading-relaxed">
           Encontre eventos e atividades de apoio na sua região
         </p>
       </div>
 
-      <div id="eventos-list" class="space-y-5"></div>
+      <div id="eventos-list" class="space-y-5 desktop-grid-2 desktop-readable"></div>
     </section>
 
     <!-- ==========================================
          TELA 7: DETALHE DO EVENTO (Frames 00:07 a 00:14)
     =========================================== -->
     <section id="screen-evento-detalhe" class="screen px-7 pt-9 pb-6">
-      <div id="evento-detalhe-content"></div>
+      <div id="evento-detalhe-content" class="desktop-readable"></div>
     </section>
 
     <!-- ==========================================
@@ -422,27 +555,27 @@
       <div class="text-center mb-6">
         <h2 class="text-[26px] font-bold text-[#5b21b6]">Links de Apoio</h2>
         <div class="w-56 h-px bg-[#7353ba] mx-auto my-3"></div>
-        <p class="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">
+        <p class="text-xs text-slate-500 max-w-[230px] mx-auto leading-relaxed">
           Acesse grupos, encontre associações e troque experiências!
         </p>
       </div>
 
       <!-- Caixa com borda roxa suave idêntica ao protótipo -->
-      <div id="links-list" class="bg-white/75 border border-[#7353ba] rounded-md p-3 space-y-2.5 shadow-sm"></div>
+      <div id="links-list" class="bg-white/75 border border-[#7353ba] rounded-md p-3 space-y-2.5 shadow-sm desktop-narrow"></div>
     </section>
 
     <!-- ==========================================
          TELA 9: SOBRE ALZHEIMER (Frame 00:21)
     =========================================== -->
     <section id="screen-artigos" class="screen px-7 pt-7 pb-6">
-      <div id="artigos-list" class="space-y-4"></div>
+      <div id="artigos-list" class="space-y-4 desktop-grid-2 desktop-readable"></div>
     </section>
 
     <!-- ==========================================
          TELA 10: DETALHE DO ARTIGO (Frames 00:22, 00:25, 00:28)
     =========================================== -->
     <section id="screen-artigo-detalhe" class="screen px-7 pt-9 pb-6">
-      <div id="artigo-detalhe-content"></div>
+      <div id="artigo-detalhe-content" class="desktop-readable"></div>
     </section>
 
     <!-- ==========================================
@@ -454,7 +587,19 @@
         <div class="w-56 h-px bg-[#7353ba] mx-auto mt-3"></div>
       </div>
 
-      <div id="faq-list" class="space-y-3"></div>
+      <div id="faq-list" class="space-y-3 desktop-readable"></div>
+    </section>
+
+    <!-- ==========================================
+         TELA 12: MEU PERFIL (Aba de Perfil do Usuário)
+    =========================================== -->
+    <section id="screen-profile" class="screen px-7 pt-9 pb-6">
+      <div class="text-center mb-5">
+        <h2 class="text-[26px] font-bold text-[#5b21b6]">Meu Perfil</h2>
+        <div class="w-56 h-px bg-[#7353ba] mx-auto mt-3"></div>
+      </div>
+
+      <div id="profile-content" class="space-y-4 desktop-narrow"></div>
     </section>
 
     <!-- ==========================================

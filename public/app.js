@@ -6,6 +6,8 @@ let appData = {
   faqs: [],
 };
 let navHistory = [];
+let currentRegStep = 1;
+let isEditingProfile = false;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -25,6 +27,35 @@ function showToast(message) {
   }, 2800);
 }
 
+// ==================================================
+// MODO DE VISUALIZAÇÃO (Mobile vs Site PC Responsivo)
+// ==================================================
+function setViewMode(mode) {
+  const isDesktop = mode === "desktop";
+  document.body.classList.toggle("desktop-mode", isDesktop);
+  localStorage.setItem("cuida_view_mode", isDesktop ? "desktop" : "mobile");
+
+  const btnMobile = document.getElementById("btn-mode-mobile");
+  const btnDesktop = document.getElementById("btn-mode-desktop");
+  if (btnMobile && btnDesktop) {
+    btnMobile.classList.toggle("bg-[#7353ba]", !isDesktop);
+    btnMobile.classList.toggle("text-white", !isDesktop);
+    btnMobile.classList.toggle("text-slate-600", isDesktop);
+
+    btnDesktop.classList.toggle("bg-[#7353ba]", isDesktop);
+    btnDesktop.classList.toggle("text-white", isDesktop);
+    btnDesktop.classList.toggle("text-slate-600", !isDesktop);
+  }
+}
+
+function initViewMode() {
+  const savedMode = localStorage.getItem("cuida_view_mode") || "mobile";
+  setViewMode(savedMode);
+}
+
+// ==================================================
+// NAVEGAÇÃO E SENHAS
+// ==================================================
 function navigate(screenId, pushHistory = true) {
   fecharAvisoSemInscricao();
   resetPasswordVisibility();
@@ -33,6 +64,10 @@ function navigate(screenId, pushHistory = true) {
     setRecoverStep(1);
     document.getElementById("rec-codigo").value = "";
     document.getElementById("rec-senha").value = "";
+  }
+
+  if (screenId === "screen-register" && pushHistory) {
+    setRegisterStep(1);
   }
 
   const currentActive = document.querySelector(".screen.active");
@@ -88,7 +123,7 @@ function resetPasswordVisibility() {
     btn.setAttribute("title", "Mostrar senha");
   });
 
-  ["reg-senha", "login-senha", "rec-senha"].forEach((id) => {
+  ["reg-senha", "reg-confirmar-senha", "login-senha", "rec-senha"].forEach((id) => {
     const input = document.getElementById(id);
     if (input) input.type = "password";
   });
@@ -110,14 +145,10 @@ function goHome() {
 
 function logout() {
   currentUser = null;
+  isEditingProfile = false;
   localStorage.removeItem("cuida_user");
   navHistory = [];
   navigate("screen-welcome", false);
-}
-
-function preencherDemoLogin() {
-  document.getElementById("login-email").value = "maria@cuida.com";
-  document.getElementById("login-senha").value = "123456";
 }
 
 function updateHomeGreeting(nome) {
@@ -206,7 +237,7 @@ function openEvento(eventoId) {
       <p class="text-xs text-slate-700 mt-0.5">Local: <span class="underline">${escapeHtml(ev.local)}</span></p>
     </div>
 
-    <div class="my-4 overflow-hidden rounded-xl shadow border border-slate-200">
+    <div class="my-4 overflow-hidden rounded-xl shadow border border-slate-200 max-w-md mx-auto">
       <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(ev.titulo)}" class="w-full aspect-[16/9] object-cover bg-slate-900" />
     </div>
 
@@ -270,22 +301,33 @@ async function toggleInscricao(eventoId) {
 }
 
 // ==================================================
-// 2. LINKS DE APOIO (Frame 00:17)
+// 2. LINKS DE APOIO (Frame 00:17 - SVGs inline nítidos)
 // ==================================================
 function getSocialIconHtml(icone) {
   if (icone === "instagram") {
-    return `<div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white flex items-center justify-center shrink-0">
-      <i data-lucide="instagram" class="w-4 h-4"></i>
-    </div>`;
+    return `
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="2.5" width="19" height="19" rx="5"></rect>
+          <circle cx="12" cy="12" r="4"></circle>
+          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle>
+        </svg>
+      </div>`;
   }
   if (icone === "whatsapp") {
-    return `<div class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
-      <i data-lucide="message-circle" class="w-4 h-4"></i>
-    </div>`;
+    return `
+      <div class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+      </div>`;
   }
-  return `<div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 font-bold text-sm">
-    f
-  </div>`;
+  return `
+    <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor">
+        <path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"></path>
+      </svg>
+    </div>`;
 }
 
 function renderLinks() {
@@ -306,7 +348,6 @@ function renderLinks() {
   `
     )
     .join("");
-  lucide.createIcons();
 }
 
 // ==================================================
@@ -379,19 +420,16 @@ function openArtigo(artigoId) {
   let bodyHtml = "";
 
   if (art.slug === "o-que-e") {
-    // Frame 00:22-00:23: sem imagem na tela interna, subtítulos centralizados e bullets
     bodyHtml = blocosRaw
       .map((bloco) => formatArtigoBlock(bloco, { centerHeadings: true }))
       .join("");
   } else if (art.slug === "orientacoes-alimentacao" && blocosRaw.length > 0) {
-    // Frame 00:28: parágrafo introdutório acima da imagem circular
     const [intro, ...rest] = blocosRaw;
     bodyHtml =
       formatArtigoBlock(intro) +
       imgHtml +
       rest.map((bloco) => formatArtigoBlock(bloco)).join("");
   } else {
-    // Frame 00:25 e demais artigos: imagem circular logo abaixo do título
     bodyHtml =
       imgHtml +
       blocosRaw.map((bloco) => formatArtigoBlock(bloco)).join("");
@@ -420,7 +458,6 @@ function renderFaqs() {
     .map(
       (f) => `
     <div>
-      <!-- Clicável tanto na pergunta quanto no triângulo, conforme teste de usabilidade -->
       <button type="button" onclick="toggleFaq(${f.id})"
               class="w-full py-2 text-left flex items-center justify-between gap-3 group">
         <span class="text-xs font-medium text-slate-700 group-hover:text-[#5b21b6] transition">${escapeHtml(f.pergunta)}</span>
@@ -450,8 +487,334 @@ function toggleFaq(id) {
 }
 
 // ==================================================
-// AUTENTICAÇÃO
+// 5. PERFIL DO USUÁRIO (Visualizar, Editar, Eventos Inscritos e Sair)
 // ==================================================
+function getInitials(nome) {
+  const parts = String(nome || "U").trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function openProfile() {
+  isEditingProfile = false;
+  renderProfile();
+  navigate("screen-profile");
+}
+
+function toggleEditProfile(editing) {
+  isEditingProfile = editing;
+  renderProfile();
+  lucide.createIcons();
+}
+
+function renderProfile() {
+  const container = document.getElementById("profile-content");
+  if (!currentUser) {
+    container.innerHTML = `<p class="text-center text-xs text-slate-500">Faça login para visualizar seu perfil.</p>`;
+    return;
+  }
+
+  const subscribedEvents = appData.eventos.filter((ev) => ev.inscrito);
+  const eventsHtml = subscribedEvents.length
+    ? subscribedEvents
+        .map(
+          (ev) => `
+          <button type="button" onclick="openEvento(${ev.id})" class="w-full text-left flex items-center justify-between gap-3 p-2.5 rounded-xl bg-purple-50/70 border border-purple-200 hover:border-[#7353ba] transition">
+            <div>
+              <p class="text-xs font-semibold text-[#5b21b6]">${escapeHtml(ev.titulo)}</p>
+              <p class="text-[11px] text-slate-500">${escapeHtml(ev.data)} • ${escapeHtml(ev.horario)}</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-[#7353ba] shrink-0"></i>
+          </button>`
+        )
+        .join("")
+    : `<p class="text-xs text-slate-400 text-center py-2">Você ainda não se inscreveu em nenhum evento.</p>`;
+
+  if (isEditingProfile) {
+    container.innerHTML = `
+      <form onsubmit="saveProfile(event)" class="bg-white rounded-2xl p-5 shadow-sm border border-purple-200 space-y-3.5">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-sm font-bold text-[#5b21b6]">Editar Informações</h3>
+          <button type="button" onclick="toggleEditProfile(false)" class="text-xs text-slate-400 hover:text-slate-600">Cancelar</button>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Nome</label>
+          <input type="text" id="prof-nome" required value="${escapeHtml(currentUser.nome)}" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Idade</label>
+          <input type="number" id="prof-idade" min="10" max="120" value="${currentUser.idade ?? ""}" placeholder="Sua idade" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Pessoa próxima com Alzheimer</label>
+          <input type="text" id="prof-pessoa" value="${escapeHtml(currentUser.pessoaComAlzheimer || "")}" placeholder="Ex.: Minha mãe" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Vínculo / Parentesco</label>
+          <select id="prof-parentesco" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none">
+            <option value="">Não informado</option>
+            ${["Filho(a)", "Cônjuge", "Neto(a)", "Outro familiar", "Cuidador(a) profissional", "Amigo(a) / Outro"]
+              .map(
+                (opt) =>
+                  `<option value="${opt}" ${currentUser.parentesco === opt ? "selected" : ""}>${opt}</option>`
+              )
+              .join("")}
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Estágio aproximado do Alzheimer</label>
+          <select id="prof-estagio" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none">
+            <option value="">Não informado</option>
+            ${["Em investigação", "Inicial (leve)", "Moderado", "Avançado", "Prefiro não informar"]
+              .map(
+                (opt) =>
+                  `<option value="${opt}" ${currentUser.estagioDaDoenca === opt ? "selected" : ""}>${opt}</option>`
+              )
+              .join("")}
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Cidade / Estado</label>
+          <input type="text" id="prof-cidade" value="${escapeHtml(currentUser.cidade || "")}" placeholder="Ex.: Recife - PE" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="toggleEditProfile(false)" class="pill-btn-white flex-1 py-2.5 text-xs font-semibold text-slate-700">
+            Cancelar
+          </button>
+          <button type="submit" class="pill-btn-purple flex-1 py-2.5 text-xs font-semibold">
+            Salvar Alterações
+          </button>
+        </div>
+      </form>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <!-- Cartão principal do usuário -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-purple-200/80">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-full bg-[#6f2dbd] text-white font-brand font-extrabold text-xl flex items-center justify-center shrink-0 shadow">
+          ${escapeHtml(getInitials(currentUser.nome))}
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 class="text-base font-bold text-slate-800 truncate">${escapeHtml(currentUser.nome)}</h3>
+          <p class="text-xs text-slate-500 truncate">${escapeHtml(currentUser.email)}</p>
+          ${
+            currentUser.idade
+              ? `<span class="inline-block mt-1 bg-purple-100 text-[#5b21b6] text-[11px] font-semibold px-2.5 py-0.5 rounded-full">${escapeHtml(currentUser.idade)} anos</span>`
+              : ""
+          }
+        </div>
+        <button type="button" onclick="toggleEditProfile(true)" class="text-xs font-semibold text-[#7353ba] hover:underline shrink-0">
+          Editar
+        </button>
+      </div>
+    </div>
+
+    <!-- Detalhes sobre o cuidado -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-3">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-[#5b21b6]">Sobre o Cuidado</h4>
+      <div class="grid grid-cols-1 gap-2.5 text-xs">
+        <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
+          <span class="text-slate-500">Pessoa com Alzheimer</span>
+          <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.pessoaComAlzheimer || "Não informado")}</span>
+        </div>
+        <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
+          <span class="text-slate-500">Parentesco / Vínculo</span>
+          <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.parentesco || "Não informado")}</span>
+        </div>
+        <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
+          <span class="text-slate-500">Estágio aproximado</span>
+          <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.estagioDaDoenca || "Não informado")}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-slate-500">Cidade / Região</span>
+          <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.cidade || "Não informado")}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Eventos inscritos -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-3">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-[#5b21b6]">Meus Eventos Inscritos</h4>
+      <div class="space-y-2">${eventsHtml}</div>
+    </div>
+
+    <!-- Botão de sair da conta -->
+    <div class="pt-1 flex justify-center">
+      <button type="button" onclick="logout()" class="pill-btn-white px-8 py-2.5 text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 flex items-center gap-2">
+        <i data-lucide="log-out" class="w-4 h-4"></i>
+        Sair da conta
+      </button>
+    </div>
+  `;
+}
+
+async function saveProfile(e) {
+  e.preventDefault();
+  if (!currentUser) return;
+
+  const payload = {
+    nome: document.getElementById("prof-nome").value.trim(),
+    idade: document.getElementById("prof-idade").value,
+    pessoaComAlzheimer: document.getElementById("prof-pessoa").value.trim(),
+    parentesco: document.getElementById("prof-parentesco").value,
+    estagioDaDoenca: document.getElementById("prof-estagio").value,
+    cidade: document.getElementById("prof-cidade").value.trim(),
+  };
+
+  try {
+    const res = await fetch(`/api/auth/user/${currentUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.message || "Erro ao salvar perfil.");
+      return;
+    }
+
+    currentUser = data;
+    localStorage.setItem("cuida_user", JSON.stringify(currentUser));
+    updateHomeGreeting(currentUser.nome);
+    isEditingProfile = false;
+    renderProfile();
+    lucide.createIcons();
+    showToast("Perfil atualizado com sucesso!");
+  } catch (err) {
+    showToast("Erro ao conectar ao servidor.");
+  }
+}
+
+// ==================================================
+// 6. REGISTRO EM 2 ETAPAS, LOGIN E RECUPERAÇÃO
+// ==================================================
+function setRegisterStep(step) {
+  currentRegStep = step;
+  const step1 = document.getElementById("reg-step-1");
+  const step2 = document.getElementById("reg-step-2");
+  const badge = document.getElementById("reg-step-badge");
+  if (!step1 || !step2 || !badge) return;
+
+  const step2RequiredIds = ["reg-idade", "reg-pessoa", "reg-parentesco"];
+  step2RequiredIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.required = step === 2;
+  });
+
+  if (step === 2) {
+    step1.classList.add("hidden");
+    step2.classList.remove("hidden");
+    badge.textContent = "Passo 2 de 2 • Sobre o Cuidado";
+  } else {
+    step2.classList.add("hidden");
+    step1.classList.remove("hidden");
+    badge.textContent = "Passo 1 de 2 • Acesso";
+  }
+  resetPasswordVisibility();
+}
+
+function avancarEtapaRegistro() {
+  const nome = document.getElementById("reg-nome").value.trim();
+  const email = document.getElementById("reg-email").value.trim();
+  const senha = document.getElementById("reg-senha").value;
+  const confirmar = document.getElementById("reg-confirmar-senha").value;
+
+  if (!nome || !email || !senha || !confirmar) {
+    showToast("Preencha todos os campos de acesso.");
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast("Informe um email válido.");
+    return;
+  }
+  if (senha.length < 6) {
+    showToast("A senha deve ter pelo menos 6 caracteres.");
+    return;
+  }
+  if (senha !== confirmar) {
+    showToast("As senhas não coincidem.");
+    return;
+  }
+
+  setRegisterStep(2);
+}
+
+function voltarRegistro() {
+  if (currentRegStep === 2) {
+    setRegisterStep(1);
+  } else {
+    navigate("screen-welcome", false);
+  }
+}
+
+document.getElementById("form-register").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (currentRegStep !== 2) {
+    avancarEtapaRegistro();
+    return;
+  }
+
+  const nome = document.getElementById("reg-nome").value.trim();
+  const email = document.getElementById("reg-email").value.trim();
+  const senha = document.getElementById("reg-senha").value;
+  const idade = document.getElementById("reg-idade").value;
+  const pessoaComAlzheimer = document.getElementById("reg-pessoa").value.trim();
+  const parentesco = document.getElementById("reg-parentesco").value;
+  const estagioDaDoenca = document.getElementById("reg-estagio").value;
+  const cidade = document.getElementById("reg-cidade").value.trim();
+
+  const btn = document.getElementById("btn-reg-submit");
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = "Criando conta...";
+
+  try {
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome,
+        email,
+        senha,
+        idade,
+        pessoaComAlzheimer,
+        parentesco,
+        estagioDaDoenca,
+        cidade,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.message || "Erro no cadastro");
+      return;
+    }
+
+    currentUser = data;
+    localStorage.setItem("cuida_user", JSON.stringify(data));
+    document.getElementById("form-register").reset();
+    setRegisterStep(1);
+    updateHomeGreeting(data.nome);
+    showToast("Cadastro realizado!");
+    await loadAppData();
+    goHome();
+  } catch (err) {
+    showToast("Erro ao criar conta.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
 document.getElementById("form-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("login-email").value;
@@ -476,35 +839,6 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
     goHome();
   } catch (err) {
     showToast("Erro ao conectar ao servidor.");
-  }
-});
-
-document.getElementById("form-register").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const nome = document.getElementById("reg-nome").value;
-  const email = document.getElementById("reg-email").value;
-  const senha = document.getElementById("reg-senha").value;
-
-  try {
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, senha }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.message || "Erro no cadastro");
-      return;
-    }
-
-    currentUser = data;
-    localStorage.setItem("cuida_user", JSON.stringify(data));
-    updateHomeGreeting(data.nome);
-    showToast("Cadastro realizado!");
-    await loadAppData();
-    goHome();
-  } catch (err) {
-    showToast("Erro ao criar conta.");
   }
 });
 
@@ -615,6 +949,7 @@ document.getElementById("form-recover-confirm").addEventListener("submit", async
 });
 
 window.addEventListener("DOMContentLoaded", async () => {
+  initViewMode();
   lucide.createIcons();
   const saved = localStorage.getItem("cuida_user");
   if (saved) {

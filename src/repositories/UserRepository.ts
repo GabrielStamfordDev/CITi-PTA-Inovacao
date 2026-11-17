@@ -1,11 +1,31 @@
 import prisma from "../database";
 
+export const userSafeSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  idade: true,
+  pessoaComAlzheimer: true,
+  parentesco: true,
+  estagioDaDoenca: true,
+  cidade: true,
+  createdAt: true,
+};
+
 export const createUser = async (data: {
   nome: string;
   email: string;
   senha: string;
+  idade?: number | null;
+  pessoaComAlzheimer?: string | null;
+  parentesco?: string | null;
+  estagioDaDoenca?: string | null;
+  cidade?: string | null;
 }) => {
-  return await prisma.user.create({ data });
+  return await prisma.user.create({
+    data,
+    select: userSafeSelect,
+  });
 };
 
 export const findUserByEmail = async (email: string) => {
@@ -17,7 +37,25 @@ export const findUserByEmail = async (email: string) => {
 export const findUserById = async (id: number) => {
   return await prisma.user.findUnique({
     where: { id },
-    select: { id: true, nome: true, email: true, createdAt: true },
+    select: userSafeSelect,
+  });
+};
+
+export const updateUserProfile = async (
+  id: number,
+  data: {
+    nome?: string;
+    idade?: number | null;
+    pessoaComAlzheimer?: string | null;
+    parentesco?: string | null;
+    estagioDaDoenca?: string | null;
+    cidade?: string | null;
+  }
+) => {
+  return await prisma.user.update({
+    where: { id },
+    data,
+    select: userSafeSelect,
   });
 };
 

@@ -7,9 +7,35 @@ import { sendPasswordResetEmail } from "../services/MailService";
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
 
+function sanitizeOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function parseOptionalAge(value: unknown): { valid: boolean; value: number | null } {
+  if (value === undefined || value === null || value === "") {
+    return { valid: true, value: null };
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 10 || parsed > 120) {
+    return { valid: false, value: null };
+  }
+  return { valid: true, value: parsed };
+}
+
 export const register = async (req: Request, res: Response) => {
   try {
-    const { nome, email, senha } = req.body;
+    const {
+      nome,
+      email,
+      senha,
+      idade,
+      pessoaComAlzheimer,
+      parentesco,
+      estagioDaDoenca,
+      cidade,
+    } = req.body;
 
     if (
       typeof nome !== "string" ||
@@ -20,6 +46,15 @@ export const register = async (req: Request, res: Response) => {
       !senha
     ) {
       return res.status(400).json({ message: "Preencha nome, email e senha." });
+    }
+
+    if (senha.length < 6) {
+      return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres." });
+    }
+
+    const parsedAge = parseOptionalAge(idade);
+    if (!parsedAge.valid) {
+      return res.status(400).json({ message: "Informe uma idade válida (entre 10 e 120 anos)." });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -33,13 +68,14 @@ export const register = async (req: Request, res: Response) => {
       nome: nome.trim(),
       email: normalizedEmail,
       senha: hashedPassword,
+      idade: parsedAge.value,
+      pessoaComAlzheimer: sanitizeOptionalString(pessoaComAlzheimer),
+      parentesco: sanitizeOptionalString(parentesco),
+      estagioDaDoenca: sanitizeOptionalString(estagioDaDoenca),
+      cidade: sanitizeOptionalString(cidade),
     });
 
-    return res.status(201).json({
-      id: user.id,
-      nome: user.nome,
-      email: user.email,
-    });
+    return res.status(201).json(user);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao registrar usuário." });
@@ -68,6 +104,12 @@ export const login = async (req: Request, res: Response) => {
       id: user.id,
       nome: user.nome,
       email: user.email,
+      idade: user.idade,
+      pessoaComAlzheimer: user.pessoaComAlzheimer,
+      parentesco: user.parentesco,
+      estagioDaDoenca: user.estagioDaDoenca,
+      cidade: user.cidade,
+      createdAt: user.createdAt,
     });
   } catch (error) {
     console.error(error);
@@ -211,5 +253,44 @@ export const getProfile = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao buscar usuário." });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Usuário inválido." });
+    }
+
+    const existing = await UserRepository.findUserById(userId);
+    if (!existing) {
+      return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
+    const { nome, idade, pessoaComAlzheimer, parentesco, estagioDaDoenca, cidade } = req.body;
+
+    if (typeof nome !== "string" || !nome.trim()) {
+      return res.status(400).json({ message: "O nome não pode ficar vazio." });
+    }
+
+    const parsedAge = parseOptionalAge(idade);
+    if (!parsedAge.valid) {
+      return res.status(400).json({ message: "Informe uma idade válida (entre 10 e 120 anos)." });
+    }
+
+    const updated = await UserRepository.updateUserProfile(userId, {
+      nome: nome.trim(),
+      idade: parsedAge.value,
+      pessoaComAlzheimer: sanitizeOptionalString(pessoaComAlzheimer),
+      parentesco: sanitizeOptionalString(parentesco),
+      estagioDaDoenca: sanitizeOptionalString(estagioDaDoenca),
+      cidade: sanitizeOptionalString(cidade),
+    });
+
+    return res.status(200).json(updated);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao atualizar perfil." });
   }
 };
