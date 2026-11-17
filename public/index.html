@@ -193,11 +193,12 @@
 
     <!-- MODAL DE AVISO DO WEBINÁRIO (Frame 00:08 a 00:10) -->
     <div id="webinario-modal" onclick="fecharAvisoSemInscricao()" class="hidden absolute inset-0 z-40 bg-black/25 backdrop-blur-[1px] flex items-center justify-center px-7">
-      <div onclick="event.stopPropagation()" class="animate-pop bg-[#7353ba] text-white rounded-2xl px-6 py-7 text-center shadow-2xl space-y-4 w-full max-w-[310px] border border-purple-300/30">
+      <div onclick="event.stopPropagation()" class="animate-pop bg-[#7353ba] text-white rounded-2xl px-6 py-7 text-center shadow-2xl space-y-3 w-full max-w-[310px] border border-purple-300/30">
         <p class="text-sm font-medium leading-relaxed">
           Esse evento não precisa de inscrição! Basta comparecer ao local na hora indicada!
         </p>
         <p class="text-base font-bold">Aproveite!</p>
+        <p class="text-[11px] text-purple-100/90">Evento salvo na sua lista de inscritos.</p>
         <button type="button" onclick="fecharAvisoSemInscricao()" class="mt-2 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-6 py-1.5 rounded-full transition">
           Entendi
         </button>
@@ -302,13 +303,18 @@
           <p class="text-center text-xs text-slate-500 mb-3">Esses dados compõem o seu perfil para personalizar o apoio.</p>
 
           <div class="input-lilac flex items-center px-4 py-3 gap-3">
-            <i data-lucide="calendar" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
-            <input type="number" id="reg-idade" min="10" max="120" placeholder="Sua idade" class="bg-transparent w-full text-sm focus:outline-none" />
+            <div class="relative w-5 h-5 shrink-0 flex items-center justify-center text-[#5b21b6] hover:text-[#4c1d95]" title="Abrir calendário">
+              <i data-lucide="calendar" class="w-5 h-5 pointer-events-none"></i>
+              <input type="date" id="reg-nasc-picker" min="1905-01-01" aria-label="Abrir calendário para data de nascimento"
+                     onclick="try { this.showPicker && this.showPicker(); } catch {}"
+                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+            </div>
+            <input type="text" id="reg-nasc" inputmode="numeric" maxlength="10" placeholder="Data de nascimento (dd/mm/aaaa)" class="bg-transparent w-full text-sm focus:outline-none" />
           </div>
 
           <div class="input-lilac flex items-center px-4 py-3 gap-3">
             <i data-lucide="heart-handshake" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
-            <input type="text" id="reg-pessoa" placeholder="Pessoa próxima com Alzheimer (ex.: Minha mãe)" class="bg-transparent w-full text-sm focus:outline-none" />
+            <input type="text" id="reg-pessoa" placeholder="Nome da pessoa próxima com Alzheimer" class="bg-transparent w-full text-sm focus:outline-none" />
           </div>
 
           <div class="input-lilac flex items-center px-4 py-3 gap-3">
@@ -336,9 +342,21 @@
             </select>
           </div>
 
-          <div class="input-lilac flex items-center px-4 py-3 gap-3">
-            <i data-lucide="map-pin" class="w-5 h-5 text-[#5b21b6] shrink-0"></i>
-            <input type="text" id="reg-cidade" placeholder="Cidade / Estado (opcional)" class="bg-transparent w-full text-sm focus:outline-none" />
+          <div class="grid grid-cols-2 gap-3">
+            <div class="input-lilac flex items-center px-3.5 py-3 gap-2.5">
+              <i data-lucide="map-pin" class="w-4 h-4 text-[#5b21b6] shrink-0"></i>
+              <input type="text" id="reg-cidade" placeholder="Cidade (opcional)" class="bg-transparent w-full text-sm focus:outline-none min-w-0" />
+            </div>
+
+            <div class="relative" data-estado-wrapper>
+              <div class="input-lilac flex items-center px-3.5 py-3 gap-1.5">
+                <input type="text" id="reg-estado" autocomplete="off" placeholder="Estado (opcional)" class="bg-transparent w-full text-sm focus:outline-none min-w-0" />
+                <button type="button" id="reg-estado-btn" aria-label="Abrir lista de estados" title="Escolher estado" class="text-[#5b21b6]/80 hover:text-[#4c1d95] shrink-0 focus:outline-none">
+                  <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </button>
+              </div>
+              <div id="reg-estado-list" class="hidden absolute left-0 right-0 bottom-full mb-1 z-30 max-h-44 overflow-y-auto bg-white border border-purple-200 rounded-xl shadow-lg py-1"></div>
+            </div>
           </div>
 
           <div class="pt-3 flex justify-center">

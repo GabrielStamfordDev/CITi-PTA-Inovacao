@@ -4,11 +4,13 @@ export const userSafeSelect = {
   id: true,
   nome: true,
   email: true,
+  dataNascimento: true,
   idade: true,
   pessoaComAlzheimer: true,
   parentesco: true,
   estagioDaDoenca: true,
   cidade: true,
+  estado: true,
   createdAt: true,
 };
 
@@ -16,11 +18,13 @@ export const createUser = async (data: {
   nome: string;
   email: string;
   senha: string;
+  dataNascimento?: string | null;
   idade?: number | null;
   pessoaComAlzheimer?: string | null;
   parentesco?: string | null;
   estagioDaDoenca?: string | null;
   cidade?: string | null;
+  estado?: string | null;
 }) => {
   return await prisma.user.create({
     data,
@@ -45,11 +49,13 @@ export const updateUserProfile = async (
   id: number,
   data: {
     nome?: string;
+    dataNascimento?: string | null;
     idade?: number | null;
     pessoaComAlzheimer?: string | null;
     parentesco?: string | null;
     estagioDaDoenca?: string | null;
     cidade?: string | null;
+    estado?: string | null;
   }
 ) => {
   return await prisma.user.update({

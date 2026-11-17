@@ -35,13 +35,6 @@ export const toggleInscricaoEvento = async (
   if (!evento) {
     return { status: 404, error: "Evento não encontrado." };
   }
-  if (!evento.precisaInscricao) {
-    return {
-      inscrito: false,
-      precisaInscricao: false,
-      message: "Esse evento não precisa de inscrição! Basta comparecer ao local na hora indicada!",
-    };
-  }
 
   const existente = await prisma.inscricao.findUnique({
     where: {
@@ -51,13 +44,23 @@ export const toggleInscricaoEvento = async (
 
   if (existente) {
     await prisma.inscricao.delete({ where: { id: existente.id } });
-    return { inscrito: false, message: "Inscrição cancelada com sucesso." };
+    return {
+      inscrito: false,
+      precisaInscricao: evento.precisaInscricao,
+      message: "Inscrição cancelada com sucesso.",
+    };
   }
 
   await prisma.inscricao.create({
     data: { userId, eventoId },
   });
-  return { inscrito: true, message: "Inscrição confirmada no evento!" };
+  return {
+    inscrito: true,
+    precisaInscricao: evento.precisaInscricao,
+    message: evento.precisaInscricao
+      ? "Inscrição confirmada no evento!"
+      : "Evento salvo na sua lista de inscritos!",
+  };
 };
 
 export const findAllLinks = async () => {

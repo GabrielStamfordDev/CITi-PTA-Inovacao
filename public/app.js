@@ -9,6 +9,157 @@ let navHistory = [];
 let currentRegStep = 1;
 let isEditingProfile = false;
 
+const ESTADOS_BRASIL = [
+  "AC - Acre",
+  "AL - Alagoas",
+  "AP - Amapá",
+  "AM - Amazonas",
+  "BA - Bahia",
+  "CE - Ceará",
+  "DF - Distrito Federal",
+  "ES - Espírito Santo",
+  "GO - Goiás",
+  "MA - Maranhão",
+  "MT - Mato Grosso",
+  "MS - Mato Grosso do Sul",
+  "MG - Minas Gerais",
+  "PA - Pará",
+  "PB - Paraíba",
+  "PR - Paraná",
+  "PE - Pernambuco",
+  "PI - Piauí",
+  "RJ - Rio de Janeiro",
+  "RN - Rio Grande do Norte",
+  "RS - Rio Grande do Sul",
+  "RO - Rondônia",
+  "RR - Roraima",
+  "SC - Santa Catarina",
+  "SP - São Paulo",
+  "SE - Sergipe",
+  "TO - Tocantins",
+];
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function formatDateDigitsToBr(rawDigits) {
+  const digits = String(rawDigits || "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length > 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  }
+  if (digits.length > 2) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  return digits;
+}
+
+function brDateToIso(brDate) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(brDate || "").trim());
+  if (!match) return "";
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const check = new Date(year, month - 1, day);
+  if (
+    check.getFullYear() !== year ||
+    check.getMonth() !== month - 1 ||
+    check.getDate() !== day
+  ) {
+    return "";
+  }
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function isoDateToBr(isoDate) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate || "").trim());
+  if (!match) return "";
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+function initDatePickerPair(textId, pickerId) {
+  const textEl = document.getElementById(textId);
+  const pickerEl = document.getElementById(pickerId);
+  if (!textEl || !pickerEl) return;
+
+  pickerEl.max = new Date().toISOString().split("T")[0];
+
+  const initialIso = brDateToIso(textEl.value);
+  if (initialIso) pickerEl.value = initialIso;
+
+  textEl.addEventListener("input", () => {
+    textEl.value = formatDateDigitsToBr(textEl.value);
+    const iso = brDateToIso(textEl.value);
+    if (iso) pickerEl.value = iso;
+  });
+
+  pickerEl.addEventListener("change", () => {
+    const br = isoDateToBr(pickerEl.value);
+    if (br) textEl.value = br;
+  });
+}
+
+function initEstadoCombobox(inputId, listId, btnId) {
+  const inputEl = document.getElementById(inputId);
+  const listEl = document.getElementById(listId);
+  const btnEl = document.getElementById(btnId);
+  if (!inputEl || !listEl || !btnEl) return;
+
+  function renderOptions(filterQuery = "") {
+    const q = normalizeText(filterQuery.trim());
+    const matches = q
+      ? ESTADOS_BRASIL.filter((uf) => normalizeText(uf).includes(q))
+      : ESTADOS_BRASIL;
+
+    if (!matches.length) {
+      listEl.innerHTML = `<p class="px-3 py-2 text-[11px] text-slate-400">Nenhuma opção encontrada. Você pode digitar livremente.</p>`;
+      return;
+    }
+
+    listEl.innerHTML = matches
+      .map(
+        (uf) =>
+          `<button type="button" data-estado-option="${escapeHtml(uf)}" class="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-purple-50 hover:text-[#5b21b6] transition">${escapeHtml(uf)}</button>`
+      )
+      .join("");
+
+    listEl.querySelectorAll("[data-estado-option]").forEach((optBtn) => {
+      optBtn.addEventListener("click", () => {
+        inputEl.value = optBtn.getAttribute("data-estado-option") || "";
+        listEl.classList.add("hidden");
+      });
+    });
+  }
+
+  btnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = listEl.classList.contains("hidden");
+    document.querySelectorAll("[id$='-estado-list']").forEach((el) => el.classList.add("hidden"));
+    if (isHidden) {
+      renderOptions("");
+      listEl.classList.remove("hidden");
+    }
+  });
+
+  inputEl.addEventListener("input", () => {
+    renderOptions(inputEl.value);
+    listEl.classList.remove("hidden");
+  });
+
+  inputEl.addEventListener("focus", () => {
+    renderOptions(inputEl.value);
+  });
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-estado-wrapper]")) {
+    document.querySelectorAll("[id$='-estado-list']").forEach((el) => el.classList.add("hidden"));
+  }
+});
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -251,8 +402,8 @@ function openEvento(eventoId) {
           <div class="space-y-3 mt-3">${paragraphs}</div>`
         : `<div class="space-y-3 mt-4">${paragraphs}</div>
           <div class="text-center mt-5">
-            <button type="button" onclick="mostrarAvisoSemInscricao()" class="pill-btn-purple px-10 py-2.5 text-xs font-semibold">
-              Inscrever-se
+            <button type="button" onclick="toggleInscricao(${ev.id})" class="pill-btn-purple px-10 py-2.5 text-xs font-semibold">
+              ${ev.inscrito ? "✓ Inscrito (Cancelar)" : "Inscrever-se"}
             </button>
           </div>`
     }
@@ -292,9 +443,14 @@ async function toggleInscricao(eventoId) {
       return;
     }
 
-    showToast(data.message);
     await loadAppData();
     openEvento(eventoId);
+
+    if (data.inscrito && data.precisaInscricao === false) {
+      mostrarAvisoSemInscricao();
+    } else {
+      showToast(data.message);
+    }
   } catch (err) {
     showToast("Erro ao comunicar com o servidor.");
   }
@@ -544,13 +700,21 @@ function renderProfile() {
         </div>
 
         <div>
-          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Idade</label>
-          <input type="number" id="prof-idade" min="10" max="120" value="${currentUser.idade ?? ""}" placeholder="Sua idade" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Data de nascimento</label>
+          <div class="input-lilac flex items-center px-3.5 py-2.5 gap-2.5">
+            <div class="relative w-4 h-4 shrink-0 flex items-center justify-center text-[#5b21b6] hover:text-[#4c1d95]" title="Abrir calendário">
+              <i data-lucide="calendar" class="w-4 h-4 pointer-events-none"></i>
+              <input type="date" id="prof-nasc-picker" min="1905-01-01" aria-label="Abrir calendário para data de nascimento"
+                     onclick="try { this.showPicker && this.showPicker(); } catch {}"
+                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+            </div>
+            <input type="text" id="prof-nasc" inputmode="numeric" maxlength="10" value="${escapeHtml(currentUser.dataNascimento || "")}" placeholder="dd/mm/aaaa" class="bg-transparent w-full text-sm focus:outline-none" />
+          </div>
         </div>
 
         <div>
-          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Pessoa próxima com Alzheimer</label>
-          <input type="text" id="prof-pessoa" value="${escapeHtml(currentUser.pessoaComAlzheimer || "")}" placeholder="Ex.: Minha mãe" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Nome da pessoa próxima com Alzheimer</label>
+          <input type="text" id="prof-pessoa" value="${escapeHtml(currentUser.pessoaComAlzheimer || "")}" placeholder="Nome da pessoa próxima com Alzheimer" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
         </div>
 
         <div>
@@ -579,9 +743,22 @@ function renderProfile() {
           </select>
         </div>
 
-        <div>
-          <label class="text-[11px] font-semibold text-slate-500 block mb-1">Cidade / Estado</label>
-          <input type="text" id="prof-cidade" value="${escapeHtml(currentUser.cidade || "")}" placeholder="Ex.: Recife - PE" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-500 block mb-1">Cidade</label>
+            <input type="text" id="prof-cidade" value="${escapeHtml(currentUser.cidade || "")}" placeholder="Ex.: Recife" class="input-lilac w-full px-3.5 py-2.5 text-sm focus:outline-none" />
+          </div>
+
+          <div class="relative" data-estado-wrapper>
+            <label class="text-[11px] font-semibold text-slate-500 block mb-1">Estado</label>
+            <div class="input-lilac flex items-center px-3 py-2.5 gap-1.5">
+              <input type="text" id="prof-estado" autocomplete="off" value="${escapeHtml(currentUser.estado || "")}" placeholder="Digite ou escolha" class="bg-transparent w-full text-sm focus:outline-none min-w-0" />
+              <button type="button" id="prof-estado-btn" aria-label="Abrir lista de estados" title="Escolher estado" class="text-[#5b21b6]/80 hover:text-[#4c1d95] shrink-0 focus:outline-none">
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <div id="prof-estado-list" class="hidden absolute left-0 right-0 bottom-full mb-1 z-30 max-h-44 overflow-y-auto bg-white border border-purple-200 rounded-xl shadow-lg py-1"></div>
+          </div>
         </div>
 
         <div class="pt-2 flex gap-3">
@@ -594,8 +771,16 @@ function renderProfile() {
         </div>
       </form>
     `;
+    initDatePickerPair("prof-nasc", "prof-nasc-picker");
+    initEstadoCombobox("prof-estado", "prof-estado-list", "prof-estado-btn");
     return;
   }
+
+  const birthLabel = currentUser.dataNascimento
+    ? `${escapeHtml(currentUser.dataNascimento)}${currentUser.idade ? ` (${escapeHtml(currentUser.idade)} anos)` : ""}`
+    : currentUser.idade
+      ? `${escapeHtml(currentUser.idade)} anos`
+      : "Não informado";
 
   container.innerHTML = `
     <!-- Cartão principal do usuário -->
@@ -624,7 +809,11 @@ function renderProfile() {
       <h4 class="text-xs font-bold uppercase tracking-wider text-[#5b21b6]">Sobre o Cuidado</h4>
       <div class="grid grid-cols-1 gap-2.5 text-xs">
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
-          <span class="text-slate-500">Pessoa com Alzheimer</span>
+          <span class="text-slate-500">Data de nascimento</span>
+          <span class="font-semibold text-slate-800 text-right">${birthLabel}</span>
+        </div>
+        <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
+          <span class="text-slate-500">Nome da pessoa próxima com Alzheimer</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.pessoaComAlzheimer || "Não informado")}</span>
         </div>
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
@@ -635,9 +824,13 @@ function renderProfile() {
           <span class="text-slate-500">Estágio aproximado</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.estagioDaDoenca || "Não informado")}</span>
         </div>
-        <div class="flex justify-between gap-3">
-          <span class="text-slate-500">Cidade / Região</span>
+        <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
+          <span class="text-slate-500">Cidade</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.cidade || "Não informado")}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-slate-500">Estado</span>
+          <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.estado || "Não informado")}</span>
         </div>
       </div>
     </div>
@@ -662,13 +855,20 @@ async function saveProfile(e) {
   e.preventDefault();
   if (!currentUser) return;
 
+  const dataNascimento = document.getElementById("prof-nasc").value.trim();
+  if (dataNascimento && !brDateToIso(dataNascimento)) {
+    showToast("Informe uma data de nascimento válida (dd/mm/aaaa).");
+    return;
+  }
+
   const payload = {
     nome: document.getElementById("prof-nome").value.trim(),
-    idade: document.getElementById("prof-idade").value,
+    dataNascimento,
     pessoaComAlzheimer: document.getElementById("prof-pessoa").value.trim(),
     parentesco: document.getElementById("prof-parentesco").value,
     estagioDaDoenca: document.getElementById("prof-estagio").value,
     cidade: document.getElementById("prof-cidade").value.trim(),
+    estado: document.getElementById("prof-estado").value.trim(),
   };
 
   try {
@@ -705,7 +905,7 @@ function setRegisterStep(step) {
   const badge = document.getElementById("reg-step-badge");
   if (!step1 || !step2 || !badge) return;
 
-  const step2RequiredIds = ["reg-idade", "reg-pessoa", "reg-parentesco"];
+  const step2RequiredIds = ["reg-nasc", "reg-pessoa", "reg-parentesco"];
   step2RequiredIds.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.required = step === 2;
@@ -767,11 +967,17 @@ document.getElementById("form-register").addEventListener("submit", async (e) =>
   const nome = document.getElementById("reg-nome").value.trim();
   const email = document.getElementById("reg-email").value.trim();
   const senha = document.getElementById("reg-senha").value;
-  const idade = document.getElementById("reg-idade").value;
+  const dataNascimento = document.getElementById("reg-nasc").value.trim();
   const pessoaComAlzheimer = document.getElementById("reg-pessoa").value.trim();
   const parentesco = document.getElementById("reg-parentesco").value;
   const estagioDaDoenca = document.getElementById("reg-estagio").value;
   const cidade = document.getElementById("reg-cidade").value.trim();
+  const estado = document.getElementById("reg-estado").value.trim();
+
+  if (!brDateToIso(dataNascimento)) {
+    showToast("Informe uma data de nascimento válida (dd/mm/aaaa).");
+    return;
+  }
 
   const btn = document.getElementById("btn-reg-submit");
   btn.disabled = true;
@@ -786,11 +992,12 @@ document.getElementById("form-register").addEventListener("submit", async (e) =>
         nome,
         email,
         senha,
-        idade,
+        dataNascimento,
         pessoaComAlzheimer,
         parentesco,
         estagioDaDoenca,
         cidade,
+        estado,
       }),
     });
     const data = await res.json();
@@ -950,6 +1157,8 @@ document.getElementById("form-recover-confirm").addEventListener("submit", async
 
 window.addEventListener("DOMContentLoaded", async () => {
   initViewMode();
+  initDatePickerPair("reg-nasc", "reg-nasc-picker");
+  initEstadoCombobox("reg-estado", "reg-estado-list", "reg-estado-btn");
   lucide.createIcons();
   const saved = localStorage.getItem("cuida_user");
   if (saved) {

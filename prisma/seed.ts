@@ -10,21 +10,25 @@ async function seedUsers() {
   await prisma.user.upsert({
     where: { email: "maria@cuida.com" },
     update: {
+      dataNascimento: "15/05/1972",
       idade: 54,
       pessoaComAlzheimer: "Dona Tereza",
       parentesco: "Filho(a)",
       estagioDaDoenca: "Moderado",
-      cidade: "Recife - PE",
+      cidade: "Recife",
+      estado: "PE - Pernambuco",
     },
     create: {
       nome: "Maria Silva",
       email: "maria@cuida.com",
       senha: hashedPassword,
+      dataNascimento: "15/05/1972",
       idade: 54,
       pessoaComAlzheimer: "Dona Tereza",
       parentesco: "Filho(a)",
       estagioDaDoenca: "Moderado",
-      cidade: "Recife - PE",
+      cidade: "Recife",
+      estado: "PE - Pernambuco",
     },
   });
 }

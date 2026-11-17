@@ -24,17 +24,66 @@ function parseOptionalAge(value: unknown): { valid: boolean; value: number | nul
   return { valid: true, value: parsed };
 }
 
+function parseBirthDate(
+  value: unknown
+): { valid: boolean; dataNascimento: string | null; idade: number | null } {
+  if (value === undefined || value === null || value === "") {
+    return { valid: true, dataNascimento: null, idade: null };
+  }
+  if (typeof value !== "string") {
+    return { valid: false, dataNascimento: null, idade: null };
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { valid: true, dataNascimento: null, idade: null };
+  }
+
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+  if (!match) {
+    return { valid: false, dataNascimento: null, idade: null };
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  const parsedDate = new Date(year, month - 1, day);
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== month - 1 ||
+    parsedDate.getDate() !== day
+  ) {
+    return { valid: false, dataNascimento: null, idade: null };
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const mDiff = today.getMonth() - (month - 1);
+  if (mDiff < 0 || (mDiff === 0 && today.getDate() < day)) {
+    age--;
+  }
+
+  if (age < 10 || age > 120) {
+    return { valid: false, dataNascimento: null, idade: null };
+  }
+
+  return { valid: true, dataNascimento: trimmed, idade: age };
+}
+
 export const register = async (req: Request, res: Response) => {
   try {
     const {
       nome,
       email,
       senha,
+      dataNascimento,
       idade,
       pessoaComAlzheimer,
       parentesco,
       estagioDaDoenca,
       cidade,
+      estado,
     } = req.body;
 
     if (
@@ -50,6 +99,13 @@ export const register = async (req: Request, res: Response) => {
 
     if (senha.length < 6) {
       return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres." });
+    }
+
+    const parsedBirth = parseBirthDate(dataNascimento);
+    if (!parsedBirth.valid) {
+      return res
+        .status(400)
+        .json({ message: "Informe uma data de nascimento válida no formato dd/mm/aaaa." });
     }
 
     const parsedAge = parseOptionalAge(idade);
@@ -68,11 +124,13 @@ export const register = async (req: Request, res: Response) => {
       nome: nome.trim(),
       email: normalizedEmail,
       senha: hashedPassword,
-      idade: parsedAge.value,
+      dataNascimento: parsedBirth.dataNascimento,
+      idade: parsedBirth.idade ?? parsedAge.value,
       pessoaComAlzheimer: sanitizeOptionalString(pessoaComAlzheimer),
       parentesco: sanitizeOptionalString(parentesco),
       estagioDaDoenca: sanitizeOptionalString(estagioDaDoenca),
       cidade: sanitizeOptionalString(cidade),
+      estado: sanitizeOptionalString(estado),
     });
 
     return res.status(201).json(user);
@@ -104,11 +162,13 @@ export const login = async (req: Request, res: Response) => {
       id: user.id,
       nome: user.nome,
       email: user.email,
+      dataNascimento: user.dataNascimento,
       idade: user.idade,
       pessoaComAlzheimer: user.pessoaComAlzheimer,
       parentesco: user.parentesco,
       estagioDaDoenca: user.estagioDaDoenca,
       cidade: user.cidade,
+      estado: user.estado,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -268,10 +328,26 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Usuário não encontrado." });
     }
 
-    const { nome, idade, pessoaComAlzheimer, parentesco, estagioDaDoenca, cidade } = req.body;
+    const {
+      nome,
+      dataNascimento,
+      idade,
+      pessoaComAlzheimer,
+      parentesco,
+      estagioDaDoenca,
+      cidade,
+      estado,
+    } = req.body;
 
     if (typeof nome !== "string" || !nome.trim()) {
       return res.status(400).json({ message: "O nome não pode ficar vazio." });
+    }
+
+    const parsedBirth = parseBirthDate(dataNascimento);
+    if (!parsedBirth.valid) {
+      return res
+        .status(400)
+        .json({ message: "Informe uma data de nascimento válida no formato dd/mm/aaaa." });
     }
 
     const parsedAge = parseOptionalAge(idade);
@@ -281,11 +357,13 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     const updated = await UserRepository.updateUserProfile(userId, {
       nome: nome.trim(),
-      idade: parsedAge.value,
+      dataNascimento: parsedBirth.dataNascimento,
+      idade: parsedBirth.idade ?? parsedAge.value,
       pessoaComAlzheimer: sanitizeOptionalString(pessoaComAlzheimer),
       parentesco: sanitizeOptionalString(parentesco),
       estagioDaDoenca: sanitizeOptionalString(estagioDaDoenca),
       cidade: sanitizeOptionalString(cidade),
+      estado: sanitizeOptionalString(estado),
     });
 
     return res.status(200).json(updated);
