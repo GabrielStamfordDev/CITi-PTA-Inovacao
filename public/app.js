@@ -179,6 +179,113 @@ function showToast(message) {
 }
 
 // ==================================================
+// ACESSIBILIDADE SÊNIOR (Tamanho do texto + Leitura em voz alta)
+// ==================================================
+const TEXT_SCALES = [1, 1.15, 1.3];
+let currentScaleIndex = 0;
+const speechTexts = {};
+let activeSpeechBtnId = null;
+
+function applyTextScale(index) {
+  currentScaleIndex = Math.max(0, Math.min(TEXT_SCALES.length - 1, index));
+  const scale = TEXT_SCALES[currentScaleIndex];
+  const shell = document.querySelector(".app-shell");
+  if (shell) shell.style.setProperty("--text-scale", String(scale));
+  localStorage.setItem("cuida_text_scale_idx", String(currentScaleIndex));
+
+  const labelEl = document.getElementById("font-scale-label");
+  if (labelEl) labelEl.textContent = `${Math.round(scale * 100)}%`;
+
+  const decBtn = document.getElementById("btn-font-dec");
+  const incBtn = document.getElementById("btn-font-inc");
+  if (decBtn) decBtn.disabled = currentScaleIndex === 0;
+  if (incBtn) incBtn.disabled = currentScaleIndex === TEXT_SCALES.length - 1;
+}
+
+function changeTextScale(delta) {
+  applyTextScale(currentScaleIndex + delta);
+}
+
+function initTextScale() {
+  const savedIdx = Number(localStorage.getItem("cuida_text_scale_idx") || "0");
+  applyTextScale(Number.isInteger(savedIdx) ? savedIdx : 0);
+}
+
+function setSpeechBtnState(btnId, speaking) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const idleLabel = btn.getAttribute("data-idle-label") || "Ouvir texto";
+  btn.innerHTML = speaking
+    ? `<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg><span>Parar áudio</span>`
+    : `<svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span>${escapeHtml(idleLabel)}</span>`;
+  btn.setAttribute("aria-pressed", speaking ? "true" : "false");
+}
+
+function stopSpeech() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  if (activeSpeechBtnId) {
+    setSpeechBtnState(activeSpeechBtnId, false);
+    activeSpeechBtnId = null;
+  }
+}
+
+function toggleSpeech(btnId, textKey) {
+  if (!("speechSynthesis" in window)) {
+    showToast("Seu navegador não suporta leitura em voz alta.");
+    return;
+  }
+
+  const wasSameButton = activeSpeechBtnId === btnId;
+  stopSpeech();
+  if (wasSameButton) return;
+
+  const text = speechTexts[textKey];
+  if (!text) return;
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "pt-BR";
+  utterance.rate = 0.96;
+
+  const voices = window.speechSynthesis.getVoices();
+  const ptVoice =
+    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("pt-br")) ||
+    voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
+  if (ptVoice) utterance.voice = ptVoice;
+
+  activeSpeechBtnId = btnId;
+  setSpeechBtnState(btnId, true);
+
+  utterance.onend = () => {
+    if (activeSpeechBtnId === btnId) {
+      setSpeechBtnState(btnId, false);
+      activeSpeechBtnId = null;
+    }
+  };
+  utterance.onerror = () => {
+    if (activeSpeechBtnId === btnId) {
+      setSpeechBtnState(btnId, false);
+      activeSpeechBtnId = null;
+    }
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function buildSpeechButtonHtml(btnId, textKey, idleLabel = "Ouvir texto", compact = false) {
+  const padding = compact ? "px-3.5 py-1.5 text-xs" : "px-4 py-2 text-xs min-h-[38px]";
+  return `
+    <button type="button" id="${btnId}" data-idle-label="${escapeHtml(idleLabel)}" aria-pressed="false"
+            onclick="toggleSpeech('${btnId}', '${textKey}')"
+            class="inline-flex items-center gap-1.5 rounded-full bg-purple-100/90 hover:bg-purple-200/80 text-[#5b21b6] font-semibold ${padding} transition">
+      <svg viewBox="0 0 24 24" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+      <span>${escapeHtml(idleLabel)}</span>
+    </button>
+  `;
+}
+
+// ==================================================
 // MODO DE VISUALIZAÇÃO (Mobile vs Site PC Responsivo)
 // ==================================================
 function setViewMode(mode) {
@@ -208,6 +315,7 @@ function initViewMode() {
 // NAVEGAÇÃO E SENHAS
 // ==================================================
 function navigate(screenId, pushHistory = true) {
+  stopSpeech();
   fecharAvisoSemInscricao();
   resetPasswordVisibility();
 
@@ -233,7 +341,7 @@ function navigate(screenId, pushHistory = true) {
     target.scrollTop = 0;
   }
 
-  // A barra inferior com "Voltar" e "Página Inicial" aparece apenas nas telas internas
+  // Barra de acessibilidade e barra inferior aparecem apenas nas telas internas
   const noBottomBarScreens = [
     "screen-welcome",
     "screen-login",
@@ -241,8 +349,10 @@ function navigate(screenId, pushHistory = true) {
     "screen-recover",
     "screen-home",
   ];
-  const hideBottom = noBottomBarScreens.includes(screenId);
-  document.getElementById("bottom-nav").classList.toggle("hidden", hideBottom);
+  const hideBars = noBottomBarScreens.includes(screenId);
+  document.getElementById("bottom-nav").classList.toggle("hidden", hideBars);
+  const a11yBar = document.getElementById("a11y-bar");
+  if (a11yBar) a11yBar.classList.toggle("hidden", hideBars);
 
   lucide.createIcons();
 }
@@ -338,7 +448,7 @@ function getEventoMetadata(ev) {
 function renderEventos() {
   const container = document.getElementById("eventos-list");
   if (!appData.eventos.length) {
-    container.innerHTML = `<p class="text-center text-xs text-slate-500 py-8">Nenhum evento disponível no momento.</p>`;
+    container.innerHTML = `<p class="text-center reader-sm text-slate-600 py-8">Nenhum evento disponível no momento.</p>`;
     return;
   }
 
@@ -348,14 +458,14 @@ function renderEventos() {
       return `
       <div onclick="openEvento(${ev.id})" class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer hover:border-[#7353ba] transition">
         <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(ev.titulo)}" class="w-full aspect-[16/9] object-cover bg-slate-900" />
-        <div class="px-3.5 py-2.5 text-xs text-slate-600 flex items-center justify-between gap-2">
+        <div class="px-4 py-3 reader-sm text-slate-600 flex items-center justify-between gap-2">
           <div>
-            <p class="font-medium text-slate-700">${escapeHtml(ev.data)} - ${escapeHtml(ev.horario)}</p>
-            <p class="text-slate-500">${escapeHtml(modalidade)}</p>
+            <p class="font-semibold text-slate-800">${escapeHtml(ev.data)} - ${escapeHtml(ev.horario)}</p>
+            <p class="text-slate-600">${escapeHtml(modalidade)}</p>
           </div>
           ${
             ev.inscrito
-              ? `<span class="bg-purple-100 text-[#5b21b6] font-bold px-2.5 py-1 rounded-full text-[11px] shrink-0">✓ Inscrito</span>`
+              ? `<span class="bg-purple-100 text-[#5b21b6] font-bold px-2.5 py-1 rounded-full text-xs shrink-0">✓ Inscrito</span>`
               : ""
           }
         </div>
@@ -370,11 +480,14 @@ function openEvento(eventoId) {
   if (!ev) return;
 
   const { modalidade, bannerUrl } = getEventoMetadata(ev);
+  const speechKey = `evento-${ev.id}`;
+  speechTexts[speechKey] = `${ev.titulo}. ${ev.data}, ${ev.horario}. ${modalidade}. Local: ${ev.local}. ${ev.descricao || ""}`;
+
   const paragraphs = String(ev.descricao || "")
     .split("\n\n")
     .filter(Boolean)
     .map(
-      (p) => `<p class="text-xs text-slate-700 leading-relaxed text-justify">${escapeHtml(p)}</p>`
+      (p) => `<p class="reader-body text-slate-700 text-justify">${escapeHtml(p)}</p>`
     )
     .join("");
 
@@ -383,9 +496,12 @@ function openEvento(eventoId) {
     <div class="text-center mb-4">
       <h2 class="text-xl font-bold text-[#5b21b6] leading-snug">${escapeHtml(ev.titulo)}</h2>
       <div class="w-56 h-px bg-[#7353ba] mx-auto my-3"></div>
-      <p class="text-xs text-slate-700">${escapeHtml(ev.data)} - ${escapeHtml(ev.horario)}</p>
-      <p class="text-xs text-slate-700">${escapeHtml(modalidade)}</p>
-      <p class="text-xs text-slate-700 mt-0.5">Local: <span class="underline">${escapeHtml(ev.local)}</span></p>
+      <p class="reader-sm text-slate-700 font-medium">${escapeHtml(ev.data)} - ${escapeHtml(ev.horario)}</p>
+      <p class="reader-sm text-slate-700">${escapeHtml(modalidade)}</p>
+      <p class="reader-sm text-slate-700 mt-0.5">Local: <span class="underline">${escapeHtml(ev.local)}</span></p>
+      <div class="mt-3 flex justify-center">
+        ${buildSpeechButtonHtml(`speech-btn-evento-${ev.id}`, speechKey, "Ouvir detalhes")}
+      </div>
     </div>
 
     <div class="my-4 overflow-hidden rounded-xl shadow border border-slate-200 max-w-md mx-auto">
@@ -395,14 +511,14 @@ function openEvento(eventoId) {
     ${
       ev.precisaInscricao
         ? `<div class="text-center my-5">
-            <button type="button" onclick="toggleInscricao(${ev.id})" class="pill-btn-purple px-10 py-2.5 text-xs font-semibold">
+            <button type="button" onclick="toggleInscricao(${ev.id})" class="pill-btn-purple px-10 py-3 text-sm font-semibold min-h-[44px]">
               ${ev.inscrito ? "✓ Inscrito (Cancelar)" : "Inscrever-se"}
             </button>
           </div>
           <div class="space-y-3 mt-3">${paragraphs}</div>`
         : `<div class="space-y-3 mt-4">${paragraphs}</div>
           <div class="text-center mt-5">
-            <button type="button" onclick="toggleInscricao(${ev.id})" class="pill-btn-purple px-10 py-2.5 text-xs font-semibold">
+            <button type="button" onclick="toggleInscricao(${ev.id})" class="pill-btn-purple px-10 py-3 text-sm font-semibold min-h-[44px]">
               ${ev.inscrito ? "✓ Inscrito (Cancelar)" : "Inscrever-se"}
             </button>
           </div>`
@@ -489,7 +605,7 @@ function getSocialIconHtml(icone) {
 function renderLinks() {
   const container = document.getElementById("links-list");
   if (!appData.links.length) {
-    container.innerHTML = `<p class="text-center text-xs text-slate-500 py-4">Nenhum link cadastrado.</p>`;
+    container.innerHTML = `<p class="text-center reader-sm text-slate-600 py-4">Nenhum link cadastrado.</p>`;
     return;
   }
 
@@ -497,9 +613,9 @@ function renderLinks() {
     .map(
       (link) => `
     <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer"
-       class="flex items-center gap-3 bg-white border border-purple-200 rounded-md px-3 py-2.5 hover:bg-purple-50 transition">
+       class="flex items-center gap-3 bg-white border border-purple-200 rounded-lg px-3.5 py-3 min-h-[48px] hover:bg-purple-50 transition">
       ${getSocialIconHtml(link.icone)}
-      <span class="text-xs font-medium text-[#5b21b6] underline leading-snug">${escapeHtml(link.titulo)}</span>
+      <span class="reader-sm font-medium text-[#5b21b6] underline">${escapeHtml(link.titulo)}</span>
     </a>
   `
     )
@@ -512,7 +628,7 @@ function renderLinks() {
 function renderArtigos() {
   const container = document.getElementById("artigos-list");
   if (!appData.artigos.length) {
-    container.innerHTML = `<p class="text-center text-xs text-slate-500 py-8">Nenhum artigo disponível.</p>`;
+    container.innerHTML = `<p class="text-center reader-sm text-slate-600 py-8">Nenhum artigo disponível.</p>`;
     return;
   }
 
@@ -520,9 +636,9 @@ function renderArtigos() {
     .map(
       (art) => `
     <div onclick="openArtigo(${art.id})"
-         class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200/80 flex items-center justify-between gap-4 cursor-pointer hover:border-[#7353ba] transition">
+         class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200/80 flex items-center justify-between gap-4 cursor-pointer hover:border-[#7353ba] transition min-h-[84px]">
       <div class="flex-1 text-center px-2">
-        <h3 class="text-sm font-medium text-slate-700 leading-snug">${escapeHtml(art.titulo)}</h3>
+        <h3 class="reader-body font-semibold text-slate-700">${escapeHtml(art.titulo)}</h3>
       </div>
       <img src="${escapeHtml(art.icone)}" alt="${escapeHtml(art.titulo)}" class="w-24 h-16 object-cover rounded-xl shrink-0 border border-slate-100 bg-slate-100" />
     </div>
@@ -539,7 +655,7 @@ function formatArtigoBlock(bloco, { centerHeadings = false } = {}) {
     const items = trimmed
       .split("\n")
       .map((line) => line.replace(/^•\s*/, "").trim())
-      .map((item) => `<li class="text-xs text-slate-700 leading-relaxed">${escapeHtml(item)}</li>`)
+      .map((item) => `<li class="reader-body text-slate-700">${escapeHtml(item)}</li>`)
       .join("");
     return `<ul class="list-disc pl-5 space-y-2 mb-4 text-left">${items}</ul>`;
   }
@@ -550,17 +666,20 @@ function formatArtigoBlock(bloco, { centerHeadings = false } = {}) {
     /^\d+\.\s/.test(trimmed);
 
   if (isHeading) {
-    return `<p class="text-sm font-bold text-[#5b21b6] mt-4 mb-2 ${
+    return `<p class="reader-heading font-bold text-[#5b21b6] mt-4 mb-2 ${
       centerHeadings ? "text-center" : "text-left"
     }">${escapeHtml(trimmed)}</p>`;
   }
 
-  return `<p class="text-xs text-slate-700 leading-relaxed mb-3 whitespace-pre-line text-left">${escapeHtml(trimmed)}</p>`;
+  return `<p class="reader-body text-slate-700 mb-3 whitespace-pre-line text-left">${escapeHtml(trimmed)}</p>`;
 }
 
 function openArtigo(artigoId) {
   const art = appData.artigos.find((a) => a.id === artigoId);
   if (!art) return;
+
+  const speechKey = `artigo-${art.id}`;
+  speechTexts[speechKey] = `${art.resumo || art.titulo}. ${String(art.conteudo || "").replace(/•/g, "")}`;
 
   const blocosRaw = String(art.conteudo || "")
     .split("\n\n")
@@ -593,7 +712,10 @@ function openArtigo(artigoId) {
 
   const container = document.getElementById("artigo-detalhe-content");
   container.innerHTML = `
-    <h2 class="text-center text-2xl font-bold text-[#5b21b6] mb-4 leading-tight">${escapeHtml(art.resumo || art.titulo)}</h2>
+    <h2 class="text-center text-2xl font-bold text-[#5b21b6] mb-3 leading-tight">${escapeHtml(art.resumo || art.titulo)}</h2>
+    <div class="flex justify-center mb-4">
+      ${buildSpeechButtonHtml(`speech-btn-artigo-${art.id}`, speechKey, "Ouvir orientação")}
+    </div>
     <div>${bodyHtml}</div>
   `;
 
@@ -606,39 +728,48 @@ function openArtigo(artigoId) {
 function renderFaqs() {
   const container = document.getElementById("faq-list");
   if (!appData.faqs.length) {
-    container.innerHTML = `<p class="text-center text-xs text-slate-500 py-8">Nenhuma pergunta cadastrada.</p>`;
+    container.innerHTML = `<p class="text-center reader-sm text-slate-600 py-8">Nenhuma pergunta cadastrada.</p>`;
     return;
   }
 
   container.innerHTML = appData.faqs
-    .map(
-      (f) => `
+    .map((f) => {
+      const speechKey = `faq-${f.id}`;
+      speechTexts[speechKey] = `${f.pergunta} ${f.resposta}`;
+      return `
     <div>
-      <button type="button" onclick="toggleFaq(${f.id})"
-              class="w-full py-2 text-left flex items-center justify-between gap-3 group">
-        <span class="text-xs font-medium text-slate-700 group-hover:text-[#5b21b6] transition">${escapeHtml(f.pergunta)}</span>
+      <button type="button" id="faq-btn-${f.id}" aria-expanded="false" onclick="toggleFaq(${f.id})"
+              class="w-full py-2.5 min-h-[44px] text-left flex items-center justify-between gap-3 group">
+        <span class="reader-sm font-semibold text-slate-700 group-hover:text-[#5b21b6] transition">${escapeHtml(f.pergunta)}</span>
         <svg id="faq-tri-${f.id}" viewBox="0 0 18 14" class="w-4 h-3.5 shrink-0 text-[#5b21b6] transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="1.6">
           <polygon points="2,2 16,2 9,12" stroke-linejoin="round" />
         </svg>
       </button>
-      <div id="faq-ans-${f.id}" class="hidden mt-1.5 p-3 bg-white/75 border border-[#7353ba] rounded-sm text-xs text-slate-700 leading-relaxed">
-        ${escapeHtml(f.resposta)}
+      <div id="faq-ans-${f.id}" class="hidden mt-1.5 p-3.5 bg-white/85 border border-[#7353ba] rounded-md reader-body text-slate-700 space-y-2.5">
+        <p>${escapeHtml(f.resposta)}</p>
+        <div>
+          ${buildSpeechButtonHtml(`speech-btn-faq-${f.id}`, speechKey, "Ouvir resposta", true)}
+        </div>
       </div>
     </div>
-  `
-    )
+  `;
+    })
     .join("");
 }
 
 function toggleFaq(id) {
   const ans = document.getElementById(`faq-ans-${id}`);
   const tri = document.getElementById(`faq-tri-${id}`);
+  const btn = document.getElementById(`faq-btn-${id}`);
   if (!ans) return;
 
   const isHidden = ans.classList.contains("hidden");
   ans.classList.toggle("hidden", !isHidden);
-  if (tri) {
-    tri.classList.toggle("rotate-180", isHidden);
+  if (tri) tri.classList.toggle("rotate-180", isHidden);
+  if (btn) btn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+
+  if (!isHidden && activeSpeechBtnId === `speech-btn-faq-${id}`) {
+    stopSpeech();
   }
 }
 
@@ -807,29 +938,29 @@ function renderProfile() {
     <!-- Detalhes sobre o cuidado -->
     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-3">
       <h4 class="text-xs font-bold uppercase tracking-wider text-[#5b21b6]">Sobre o Cuidado</h4>
-      <div class="grid grid-cols-1 gap-2.5 text-xs">
+      <div class="grid grid-cols-1 gap-2.5 reader-sm">
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
-          <span class="text-slate-500">Data de nascimento</span>
+          <span class="text-slate-600">Data de nascimento</span>
           <span class="font-semibold text-slate-800 text-right">${birthLabel}</span>
         </div>
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
-          <span class="text-slate-500">Nome da pessoa próxima com Alzheimer</span>
+          <span class="text-slate-600">Nome da pessoa próxima com Alzheimer</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.pessoaComAlzheimer || "Não informado")}</span>
         </div>
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
-          <span class="text-slate-500">Parentesco / Vínculo</span>
+          <span class="text-slate-600">Parentesco / Vínculo</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.parentesco || "Não informado")}</span>
         </div>
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
-          <span class="text-slate-500">Estágio aproximado</span>
+          <span class="text-slate-600">Estágio aproximado</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.estagioDaDoenca || "Não informado")}</span>
         </div>
         <div class="flex justify-between gap-3 border-b border-slate-100 pb-2">
-          <span class="text-slate-500">Cidade</span>
+          <span class="text-slate-600">Cidade</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.cidade || "Não informado")}</span>
         </div>
         <div class="flex justify-between gap-3">
-          <span class="text-slate-500">Estado</span>
+          <span class="text-slate-600">Estado</span>
           <span class="font-semibold text-slate-800 text-right">${escapeHtml(currentUser.estado || "Não informado")}</span>
         </div>
       </div>
@@ -1157,6 +1288,7 @@ document.getElementById("form-recover-confirm").addEventListener("submit", async
 
 window.addEventListener("DOMContentLoaded", async () => {
   initViewMode();
+  initTextScale();
   initDatePickerPair("reg-nasc", "reg-nasc-picker");
   initEstadoCombobox("reg-estado", "reg-estado-list", "reg-estado-btn");
   lucide.createIcons();
