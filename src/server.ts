@@ -8,7 +8,7 @@ const app = express();
 // Necessário para cookies `HttpOnly; Secure` funcionarem atrás de proxy reverso (Render, Railway, etc.)
 app.set("trust proxy", 1);
 
-app.use(express.json());
+app.use(express.json({ limit: "32kb" }));
 
 // Serve os arquivos estáticos do Front-end (pasta public) e os PDFs científicos do acervo
 app.use(express.static(resolveProjectPath("public")));

@@ -13,6 +13,7 @@ import {
   retrieveHybridRagContext,
 } from "../rag/retriever";
 import { resolveProjectPath } from "../utils/projectPaths";
+import { DailyCallBudget } from "../utils/dailyCallBudget";
 
 export interface CaregiverContext {
   id?: number;
@@ -216,6 +217,8 @@ function buildSystemInstructionFromPtcf(params: {
     .replace("{{RECURSOS_LOCAIS}}", recursosLocais);
 }
 
+const geminiGenerationBudget = new DailyCallBudget("GEMINI_MAX_DAILY_CALLS", 400);
+
 async function callGeminiWithEvidence(params: {
   question: string;
   profileSummary: string;
@@ -226,6 +229,7 @@ async function callGeminiWithEvidence(params: {
 }): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return null;
+  if (!geminiGenerationBudget.tryConsume()) return null;
 
   const systemInstruction = buildSystemInstructionFromPtcf({
     profileSummary: params.profileSummary,

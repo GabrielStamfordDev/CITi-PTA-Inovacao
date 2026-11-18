@@ -1,4 +1,7 @@
 import { RAG_CONFIG } from "./config";
+import { DailyCallBudget } from "../utils/dailyCallBudget";
+
+const queryEmbeddingBudget = new DailyCallBudget("RAG_MAX_DAILY_EMBED_QUERIES", 400);
 
 interface CachedEmbedding {
   vector: number[];
@@ -173,6 +176,7 @@ export async function embedQueryText(rawQuery: string): Promise<number[] | null>
   const cacheKey = `${RAG_CONFIG.embedding.model}:${RAG_CONFIG.embedding.dimension}:${query.toLowerCase()}`;
   const cached = getCachedQueryEmbedding(cacheKey);
   if (cached) return cached;
+  if (!queryEmbeddingBudget.tryConsume()) return null;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RAG_CONFIG.embedding.model}:embedContent?key=${encodeURIComponent(
     apiKey

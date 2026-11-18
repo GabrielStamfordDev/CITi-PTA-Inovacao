@@ -284,11 +284,13 @@ Estruturei o sistema em arquitetura cliente-servidor em camadas (\textit{Routes,
   \end{tabularx}
 \end{table}
 
-\subtituloSecao{Segurança e Proteção contra Acesso Indevido (Anti-IDOR)}
+\subtituloSecao{Segurança e Proteção contra Acesso Indevido e Abuso de Cotas}
 
 Durante a revisão do código, identifiquei e corrigi uma vulnerabilidade clássica de segurança conhecida como \textbf{IDOR} (\textit{Insecure Direct Object Reference}): inicialmente, rotas como perfil e inscrições recebiam o parâmetro \texttt{userId} enviado pelo cliente, o que em tese permitiria que um usuário autenticado tentasse consultar ou alterar dados de outra pessoa apenas trocando o número do ID na requisição.
 
 Para resolver isso de forma definitiva, implementei autenticação assinada via \textbf{JWT (HMAC-SHA256)} armazenada em cookie \textbf{\texttt{HttpOnly; SameSite=Lax; Secure}} (com \texttt{trust proxy} ativado para funcionamento atrás do proxy HTTPS da nuvem). Toda requisição autenticada passa pelo middleware que extrai o ID real diretamente do token assinado e bloqueia com erro HTTP 403 qualquer tentativa de enviar um \texttt{userId} diferente do usuário logado.
+
+Além disso, como a plataforma fica exposta publicamente na internet com chaves de API armazenadas no servidor, protegi os endpoints críticos contra automação e esgotamento de cotas (\textit{rate limiting}): o Assistente CuiDA exige sessão autenticada (\texttt{requireAuth}) com teto de \textbf{12 perguntas por minuto e 60 por hora} por usuário/IP, o disparo de recuperação por e-mail limita-se a \textbf{10 envios a cada 15 minutos} por IP e por destinatário, há limite de \textbf{32 KB} para o corpo JSON e um disjuntor diário de chamadas à Gemini API que comuta automaticamente para contingência local caso o teto de segurança seja atingido.
 
 \tituloSecao{Inteligência Artificial: no Produto e no Desenvolvimento}
 

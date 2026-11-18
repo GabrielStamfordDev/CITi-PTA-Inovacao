@@ -1822,7 +1822,9 @@ async function sendAssistantQuestion(rawQuestion) {
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data?.message || "Erro ao consultar assistente.");
+      const apiErr = new Error(data?.message || "Erro ao consultar assistente.");
+      apiErr.isApiMessage = Boolean(data?.message);
+      throw apiErr;
     }
 
     assistantState.messages.push({
@@ -1836,8 +1838,9 @@ async function sendAssistantQuestion(rawQuestion) {
     assistantState.messages.push({
       id: `err-${Date.now()}`,
       role: "assistant",
-      content:
-        "Não consegui concluir sua consulta agora. Verifique se o servidor está ativo e tente novamente em instantes.",
+      content: err?.isApiMessage
+        ? err.message
+        : "Não consegui concluir sua consulta agora. Verifique se o servidor está ativo e tente novamente em instantes.",
       sources: [],
       suggestions: [],
     });
