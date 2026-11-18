@@ -578,7 +578,7 @@
             </span>
             <h1 class="font-brand text-2xl font-extrabold text-[#5b21b6] tracking-tight">CuiDA</h1>
           </div>
-          <button type="button" onclick="logout()" aria-label="Sair da conta" title="Sair da conta"
+          <button type="button" onclick="requestLogout()" aria-label="Sair da conta" title="Sair da conta"
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-xs font-semibold text-slate-600 hover:text-red-600 transition">
             <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
             <span>Sair</span>
@@ -951,6 +951,21 @@
         </form>
       </div>
     </section>
+
+    <!-- Confirmação antes de sair da conta (evita toque acidental) -->
+    <div id="logout-modal" class="hidden absolute inset-0 z-50 bg-slate-900/50 flex items-center justify-center px-6" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
+      <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-[320px] text-center animate-pop">
+        <div class="w-12 h-12 mx-auto rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
+          <i data-lucide="log-out" class="w-6 h-6"></i>
+        </div>
+        <h3 id="logout-modal-title" class="font-brand text-lg font-extrabold text-slate-900">Deseja sair da conta?</h3>
+        <p class="text-sm text-slate-600 mt-1">Você precisará entrar novamente com seu e-mail e senha.</p>
+        <div class="mt-5 flex flex-col gap-2">
+          <button type="button" onclick="closeLogoutModal()" class="pill-btn-purple w-full py-3 text-sm font-bold min-h-[44px]">Continuar no CuiDA</button>
+          <button type="button" onclick="confirmLogout()" class="pill-btn-white w-full py-3 text-sm font-semibold text-rose-600 min-h-[44px]">Sim, sair</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ==========================================
          BARRA INFERIOR DO APLICATIVO (SINALIZAÇÃO DE PÁGINA INICIAL + PERFIL + VOLTAR)

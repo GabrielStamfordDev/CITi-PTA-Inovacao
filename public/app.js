@@ -595,6 +595,26 @@ function goHome() {
   navigate("screen-home", false);
 }
 
+function requestLogout() {
+  const modal = document.getElementById("logout-modal");
+  if (!modal) return logout();
+  modal.classList.remove("hidden");
+  lucide.createIcons();
+}
+
+function closeLogoutModal() {
+  document.getElementById("logout-modal")?.classList.add("hidden");
+}
+
+async function confirmLogout() {
+  closeLogoutModal();
+  await logout();
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeLogoutModal();
+});
+
 async function logout() {
   try {
     await authFetch("/api/auth/logout", { method: "POST" });
@@ -1187,7 +1207,7 @@ function renderProfile() {
 
     <!-- Botão de sair da conta -->
     <div class="pt-1 flex justify-center">
-      <button type="button" onclick="logout()" class="pill-btn-white px-8 py-2.5 text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 flex items-center gap-2">
+      <button type="button" onclick="requestLogout()" class="pill-btn-white px-8 py-2.5 text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 flex items-center gap-2">
         <i data-lucide="log-out" class="w-4 h-4"></i>
         Sair da conta
       </button>
@@ -2040,9 +2060,38 @@ async function loadForumMessages(showFeedback = false) {
 
 async function openForum() {
   navigate("screen-forum");
-  renderForumMessages(false);
+  renderForumMessages(true);
   await loadForumMessages(false);
+  renderForumMessages(true);
+  lucide.createIcons();
 }
+
+// Atualização automática silenciosa do fórum enquanto a tela está aberta (sensação de chat ao vivo)
+setInterval(async () => {
+  const forumScreen = document.getElementById("screen-forum");
+  if (!forumScreen?.classList.contains("active") || document.hidden || forumSending) return;
+  const list = document.getElementById("forum-messages-list");
+  const inputEl = document.getElementById("forum-input");
+  try {
+    const res = await authFetch("/api/forum/mensagens");
+    if (!res.ok) return;
+    const data = await res.json();
+    const incoming = Array.isArray(data.messages) ? data.messages : [];
+    const current = appData.forumMessages || [];
+    const lastIncoming = incoming[incoming.length - 1]?.id;
+    const lastCurrent = current[current.length - 1]?.id;
+    if (incoming.length === current.length && lastIncoming === lastCurrent) return;
+
+    const nearBottom = list ? list.scrollHeight - list.scrollTop - list.clientHeight < 120 : true;
+    appData.forumMessages = incoming;
+    renderForumMessages(nearBottom);
+    lucide.createIcons();
+    if (!nearBottom) showToast("Nova mensagem no fórum");
+    if (inputEl && document.activeElement === inputEl) inputEl.focus();
+  } catch {
+    // silencioso: tenta novamente no próximo ciclo
+  }
+}, 15000);
 
 document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
   e.preventDefault();
