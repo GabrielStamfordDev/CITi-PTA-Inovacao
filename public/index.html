@@ -739,10 +739,10 @@
             </div>
             <div class="mt-2">
               <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Meu Perfil</p>
-              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Seus dados e familiar cuidado</p>
-            </div>
-          </button>
         </div>
+
+        <!-- Próximo evento (atalho direto, como o bloco "Upcoming" do mockup) -->
+        <div id="home-upcoming" class="hidden mt-5"></div>
       </div>
     </section>
 
@@ -949,6 +949,7 @@
             <i data-lucide="send" class="w-4 h-4"></i>
           </button>
         </form>
+        <p id="forum-counter" class="desktop-readable hidden text-right text-[11px] font-semibold text-slate-500 mt-1 pr-14" aria-live="polite"></p>
       </div>
     </section>
 
@@ -970,19 +971,26 @@
     <!-- ==========================================
          BARRA INFERIOR DO APLICATIVO (SINALIZAÇÃO DE PÁGINA INICIAL + PERFIL + VOLTAR)
     =========================================== -->
-    <nav id="bottom-nav" class="hidden shrink-0 bg-white/95 backdrop-blur border-t border-purple-200/80 px-4 py-2 flex justify-around items-center gap-2 z-30 shadow-[0_-4px_14px_rgba(91,33,182,0.06)]">
+    <nav id="bottom-nav" class="hidden shrink-0 bg-white/95 backdrop-blur border-t border-purple-200/80 px-2 py-2 flex justify-around items-center gap-1 z-30 shadow-[0_-4px_14px_rgba(91,33,182,0.06)]">
       <!-- Botão Voltar (exibido apenas nas telas internas, oculto na Página Inicial) -->
       <button type="button" id="nav-btn-back" onclick="goBack()" aria-label="Voltar para a tela anterior"
-              class="hidden flex-1 max-w-[115px] py-2 px-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
+              class="hidden flex-1 min-w-0 py-2 px-1 rounded-2xl text-[11px] font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
         <i data-lucide="arrow-left" class="w-4 h-4"></i>
         <span>Voltar</span>
       </button>
 
       <!-- Aba Página Inicial (com sinalização visual ativa quando na Home) -->
       <button type="button" id="nav-btn-home" onclick="goHome()" aria-label="Ir para a Página Inicial" aria-current="page"
-              class="flex-1 max-w-[140px] py-2 px-3 rounded-2xl text-xs font-bold flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
+              class="flex-1 min-w-0 py-2 px-1 rounded-2xl text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
         <i data-lucide="home" class="w-4 h-4"></i>
-        <span>Página Inicial</span>
+        <span>Início</span>
+      </button>
+
+      <!-- Aba Assistente (acesso rápido à IA de qualquer tela) -->
+      <button type="button" id="nav-btn-assistant" onclick="openAssistant()" aria-label="Abrir o Assistente CuiDA"
+              class="flex-1 min-w-0 py-2 px-1 rounded-2xl text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <span>Assistente</span>
       </button>
 
       <!-- Aba Fórum -->

@@ -523,6 +523,7 @@ function updateBottomNavState(screenId) {
   const backBtn = document.getElementById("nav-btn-back");
   const homeBtn = document.getElementById("nav-btn-home");
   const forumBtn = document.getElementById("nav-btn-forum");
+  const assistantBtn = document.getElementById("nav-btn-assistant");
   const profileBtn = document.getElementById("nav-btn-profile");
 
   // Botão Voltar aparece nas telas internas e fica oculto na Página Inicial
@@ -534,16 +535,17 @@ function updateBottomNavState(screenId) {
     if (!btn) return;
     if (isActive) {
       btn.className =
-        "flex-1 max-w-[140px] py-2 px-3 rounded-2xl text-xs font-extrabold bg-[#ede9fe] text-[#5b21b6] border-2 border-[#7353ba] shadow-sm flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition";
+        "flex-1 min-w-0 py-2 px-1 rounded-2xl text-[11px] font-extrabold bg-[#ede9fe] text-[#5b21b6] border-2 border-[#7353ba] shadow-sm flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition";
       btn.setAttribute("aria-current", "page");
     } else {
       btn.className =
-        "flex-1 max-w-[130px] py-2 px-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-purple-50 hover:text-[#5b21b6] border border-transparent flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition";
+        "flex-1 min-w-0 py-2 px-1 rounded-2xl text-[11px] font-semibold text-slate-600 hover:bg-purple-50 hover:text-[#5b21b6] border border-transparent flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition";
       btn.removeAttribute("aria-current");
     }
   };
 
   applyNavTabStyle(homeBtn, screenId === "screen-home");
+  applyNavTabStyle(assistantBtn, screenId === "screen-assistente");
   applyNavTabStyle(forumBtn, screenId === "screen-forum");
   applyNavTabStyle(profileBtn, screenId === "screen-profile");
 }
@@ -679,7 +681,38 @@ function getEventoMetadata(ev) {
   };
 }
 
+function renderHomeUpcoming() {
+  const box = document.getElementById("home-upcoming");
+  if (!box) return;
+  const eventos = Array.isArray(appData.eventos) ? appData.eventos : [];
+  const ev = eventos.find((e) => e.inscrito) || eventos[0];
+  if (!ev) {
+    box.classList.add("hidden");
+    return;
+  }
+  const { modalidade } = getEventoMetadata(ev);
+  box.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-brand text-base font-extrabold text-slate-800">${ev.inscrito ? "Seu próximo evento" : "Próximo evento"}</h3>
+      <button type="button" onclick="navigate('screen-eventos')" class="text-xs font-bold text-[#5b21b6] hover:underline">Ver todos</button>
+    </div>
+    <button type="button" onclick="openEvento(${ev.id})"
+            class="w-full text-left bg-white/95 hover:bg-purple-50/70 border border-purple-200/70 hover:border-[#7353ba] rounded-2xl p-3.5 shadow-sm transition flex items-center gap-3">
+      <div class="w-12 h-12 shrink-0 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex flex-col items-center justify-center leading-none">
+        <span class="font-brand text-sm font-extrabold">${escapeHtml(ev.data)}</span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="font-brand text-sm font-extrabold text-slate-800 leading-snug">${escapeHtml(ev.titulo)}</p>
+        <p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(ev.horario)} • ${escapeHtml(modalidade)}</p>
+      </div>
+      ${ev.inscrito ? `<span class="shrink-0 bg-purple-100 text-[#5b21b6] font-bold px-2 py-1 rounded-full text-[10px]">✓ Inscrito</span>` : `<span class="shrink-0 text-[#5b21b6] text-lg" aria-hidden="true">›</span>`}
+    </button>
+  `;
+  box.classList.remove("hidden");
+}
+
 function renderEventos() {
+  renderHomeUpcoming();
   const container = document.getElementById("eventos-list");
   if (!appData.eventos.length) {
     container.innerHTML = `<p class="text-center reader-sm text-slate-600 py-8">Nenhum evento disponível no momento.</p>`;
@@ -2093,6 +2126,20 @@ setInterval(async () => {
   }
 }, 15000);
 
+document.getElementById("forum-input")?.addEventListener("input", (e) => {
+  const counter = document.getElementById("forum-counter");
+  if (!counter) return;
+  const max = Number(e.target.maxLength) || 1000;
+  const left = max - e.target.value.length;
+  if (left <= 150) {
+    counter.textContent = `${left} caracteres restantes`;
+    counter.classList.remove("hidden");
+    counter.classList.toggle("text-rose-600", left <= 30);
+  } else {
+    counter.classList.add("hidden");
+  }
+});
+
 document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (forumSending) return;
@@ -2118,6 +2165,7 @@ document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
     }
 
     if (inputEl) inputEl.value = "";
+    document.getElementById("forum-counter")?.classList.add("hidden");
     if (data?.message) {
       appData.forumMessages.push(data.message);
       renderForumMessages(true);
