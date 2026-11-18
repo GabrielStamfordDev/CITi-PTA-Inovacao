@@ -62,6 +62,9 @@ const PT_STOPWORDS = new Set([
   "passo", "antes", "depois", "hoje", "ontem", "agora", "vezes", "coisa", "coisas",
   "dezenas", "seguidas", "momento", "hora", "certa", "agir", "fecha", "tento",
   "explicar", "lidar", "preciso", "saber", "exatas", "exata", "aplicar", "unidades",
+  "sentindo", "sente", "sentir", "sentiu", "ficando", "ficou", "fique", "passando",
+  "teve", "apareceu", "surgiu", "comecou", "toma", "tomando", "forte", "direito",
+  "esquerdo", "passar", "andar",
 ]);
 
 const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
@@ -70,11 +73,11 @@ const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
     extras: ["banho", "higiene", "agua", "privacidade", "toalha", "bathing", "washing", "shower"],
   },
   {
-    pattern: /\b(dormir|madrugada|acorda|acordando|noite|insonia|sono)\b/,
+    pattern: /\b(dormir|madrugada|acord\w*|noite|insonia|sono)\b/,
     extras: ["sono", "noturno", "noite", "insonia", "rotina", "entardecer", "sleep", "night", "sleeping"],
   },
   {
-    pattern: /\b(tarde|entardecer|escurecer|fim da tarde|por do sol|inquieta)\b/,
+    pattern: /\b(tarde|entardec\w*|escurec\w*|fim da tarde|por do sol|inquieta\w*)\b/,
     extras: ["entardecer", "sundowning", "agitacao", "iluminacao", "tarde", "evening", "restless"],
   },
   {
@@ -82,27 +85,27 @@ const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
     extras: ["sair", "casa", "validacao", "redirecionar", "seguranca", "perambulacao", "wandering", "home"],
   },
   {
-    pattern: /\b(andar|anda sem parar|andando|perambulacao|caminhar|se perder)\b/,
+    pattern: /\b(andar sem parar|anda sem parar|andando sem rumo|andando pela casa|perambulac\w*|wander\w*|se perder|desaparec\w*)\b/,
     extras: ["perambulacao", "wandering", "identificacao", "seguranca", "walking"],
   },
   {
-    pattern: /\b(remedio|remedios|medicamento|medicamentos|comprimido|sus|receita medica|tratamento)\b/,
+    pattern: /\b(remedio\w*|medicament\w*|medicac\w*|comprimid\w*|sus|receita medica|tratamento)\b/,
     extras: ["medicamento", "tratamento", "sus", "pcdt", "donepezila", "rivastigmina", "galantamina", "memantina", "medication"],
   },
   {
-    pattern: /\b(comer|alimentacao|comida|engasg|engolir|apetite|emagrec|refeicoes|refeicao)\b/,
+    pattern: /\b(comer|alimentac\w*|comida|engasg\w*|engolir|deglut\w*|apetite|emagrec\w*|refeic\w*)\b/,
     extras: ["alimentacao", "refeicao", "engasgo", "degluticao", "hidratacao", "eating", "feeding", "swallowing"],
   },
   {
-    pattern: /\b(repet|mesma pergunta|perguntando|conversa|dialogo|teimos|paciencia)\b/,
+    pattern: /\b(repet\w*|mesma pergunta|perguntando|conversa|dialogo|teimos\w*|paciencia)\b/,
     extras: ["repeticao", "comunicacao", "validacao", "dialogo", "calma", "repeating", "communication"],
   },
   {
-    pattern: /\b(agressiv|bate|xing|alucinac|delirio|enxerg|vozes|desconfia|acusar)\b/,
+    pattern: /\b(agressiv\w*|agita\w*|bater|bate\b|xing\w*|alucinac\w*|delirio\w*|enxerg\w*|vozes|desconfia\w*|acusar|raiva|irritad\w*)\b/,
     extras: ["agitacao", "agressividade", "alucinacoes", "delirio", "validacao", "aggression", "hallucinations", "delusions"],
   },
   {
-    pattern: /\b(cansad|exausta|exaust|chorando|culpa|sozinho|sozinha|depress|sobrecarga|desgaste|estresse|grupo|apoio|direito|beneficio|imposto|curatela)\b/,
+    pattern: /\b(cansad\w*|exaust\w*|chorand\w*|culpa|sozinho|sozinha|depress\w*|sobrecarg\w*|desgaste|estress\w*|grupo\w*|apoio|direitos|beneficio\w*|isencao|inss|curatela)\b/,
     extras: ["cuidador", "autocuidado", "sobrecarga", "apoio", "direitos", "isupport", "abraz", "stress", "carer", "support"],
   },
 ];
@@ -159,33 +162,65 @@ function jaccardSimilarity(a: string, b: string): number {
   return union > 0 ? intersection / union : 0;
 }
 
-function computeCoreTermCoverage(
+interface ChunkMatchMetrics {
+  bestChunkCoreMatches: number;
+  bestChunkCoreRatio: number;
+  bestChunkExtraMatches: number;
+  unionCoreRatio: number;
+}
+
+function measurePerChunkMatch(
   coreTerms: string[],
   matchedExtras: string[],
   chunks: RetrievedRagChunk[]
-): number {
-  if (!chunks.length) return 0;
-  const corpus = normalizeForMatching(
-    chunks.map((c) => `${c.docTitle || ""} ${c.sectionTitle || ""} ${c.content}`).join(" ")
-  );
+): ChunkMatchMetrics {
+  if (!chunks.length) {
+    return {
+      bestChunkCoreMatches: 0,
+      bestChunkCoreRatio: 0,
+      bestChunkExtraMatches: 0,
+      unionCoreRatio: 0,
+    };
+  }
 
-  let coreMatched = 0;
-  for (const term of coreTerms) {
-    const stem = term.length >= 6 ? term.slice(0, term.length - 2) : term;
-    if (corpus.includes(term) || (stem.length >= 4 && corpus.includes(stem))) {
-      coreMatched++;
+  let bestChunkCoreMatches = 0;
+  let bestChunkExtraMatches = 0;
+  const unionMatchedCore = new Set<string>();
+
+  for (const chunk of chunks) {
+    const chunkText = normalizeForMatching(
+      `${chunk.docTitle || ""} ${chunk.sectionTitle || ""} ${chunk.content}`
+    );
+
+    let localCore = 0;
+    for (const term of coreTerms) {
+      const stem = term.length >= 6 ? term.slice(0, term.length - 2) : term;
+      if (chunkText.includes(term) || (stem.length >= 4 && chunkText.includes(stem))) {
+        localCore++;
+        unionMatchedCore.add(term);
+      }
+    }
+    if (localCore > bestChunkCoreMatches) bestChunkCoreMatches = localCore;
+
+    if (matchedExtras.length) {
+      const localExtras = matchedExtras.filter((e) => chunkText.includes(e)).length;
+      if (localExtras > bestChunkExtraMatches) bestChunkExtraMatches = localExtras;
     }
   }
-  const coreRatio = coreTerms.length ? coreMatched / coreTerms.length : 0;
 
-  if (!matchedExtras.length) return coreRatio;
-  const extrasMatched = matchedExtras.filter((e) => corpus.includes(e)).length;
-  const extraRatio = Math.min(1, extrasMatched / Math.min(3, matchedExtras.length));
-  return Math.max(coreRatio, extraRatio * 0.9);
+  return {
+    bestChunkCoreMatches,
+    bestChunkCoreRatio: coreTerms.length ? bestChunkCoreMatches / coreTerms.length : 0,
+    bestChunkExtraMatches,
+    unionCoreRatio: coreTerms.length ? unionMatchedCore.size / coreTerms.length : 0,
+  };
 }
 
 const OBVIOUS_NON_CARE_REGEX =
   /\b(bolo|chocolate|brigadeiro|receita culinaria|futebol|campeonato|bitcoin|criptomoeda|javascript|python|sql|programacao|novela|horoscopo)\b/;
+
+const ACUTE_OR_NON_ALZHEIMER_SYMPTOM_REGEX =
+  /\b(dor(?:es)?\s+(?:\w+\s+){0,2}(?:no\s+)?(?:peito|joelho|costas|dente|estomago|garganta|ombro|coluna|rim|figado|ouvido)|aperto no peito|infarto|angina|falta de ar|desmaio|desmaiou|convuls\w*|avc|derrame|hemorragia|sangramento intenso|fratura|quebrou|pomada|xarope|antibiotic\w*|anti-?inflamatori\w*|insulina|nph|apendicite)\b/;
 
 function classifyEvidence(params: {
   question: string;
@@ -199,6 +234,11 @@ function classifyEvidence(params: {
   const normQuestion = normalizeForMatching(params.question);
   const wordCount = normQuestion.split(/\s+/).filter((w) => w.length >= 2).length;
 
+  // Guard symptoms/emergencies outside the Alzheimer care acervo before retrieving unrelated PDFs
+  if (ACUTE_OR_NON_ALZHEIMER_SYMPTOM_REGEX.test(normQuestion) && !hasDomainExpansion) {
+    return "insufficient";
+  }
+
   if (!ranked.length) {
     if (OBVIOUS_NON_CARE_REGEX.test(normQuestion)) return "out_of_scope";
     return wordCount <= 3 && !hasDomainExpansion ? "ambiguous" : "insufficient";
@@ -206,7 +246,7 @@ function classifyEvidence(params: {
 
   const bestCosine = Math.max(...ranked.map((r) => r.cosineSim), 0);
   const bestLexical = Math.max(...ranked.map((r) => r.lexicalScore), 0);
-  const termCoverage = computeCoreTermCoverage(coreTerms, domainExtras, ranked);
+  const matchMetrics = measurePerChunkMatch(coreTerms, domainExtras, ranked);
 
   // Detect clearly underspecified one/two-word messages ("ajuda", "remédio", "como?")
   if (coreTerms.length <= 1 && wordCount <= 3 && !hasDomainExpansion) {
@@ -214,45 +254,57 @@ function classifyEvidence(params: {
   }
 
   // Explicitly guard unrelated topics and unseen drug/dosage specificity (e.g. insulin dosage)
-  if (OBVIOUS_NON_CARE_REGEX.test(normQuestion) && (!usedVectorSearch || bestCosine < 0.6)) {
+  if (OBVIOUS_NON_CARE_REGEX.test(normQuestion) && (!usedVectorSearch || bestCosine < 0.65)) {
     return "out_of_scope";
   }
   if (
     /\b(dosagem|unidade|unidades|insulina|nph|ibuprofeno|warfarina|amoxicilina|posologia)\b/.test(
       normQuestion
     ) &&
-    computeCoreTermCoverage(coreTerms, [], ranked) < 0.45
+    matchMetrics.bestChunkCoreRatio < 0.6
   ) {
     return "insufficient";
   }
 
+  // When a non-domain query only hits weak/single keywords across separate chunks, refuse safely
+  const hasSingleChunkMultiTermCooccurrence =
+    matchMetrics.bestChunkCoreRatio >= 0.65 &&
+    matchMetrics.bestChunkCoreMatches >= Math.min(2, coreTerms.length);
+  const hasStrongDomainMatch =
+    hasDomainExpansion && matchMetrics.bestChunkExtraMatches >= 2;
+
   if (usedVectorSearch) {
     const passesPartialVector = bestCosine >= RAG_CONFIG.retrieval.minCosineForPartial;
     const passesStrongVector = bestCosine >= RAG_CONFIG.retrieval.minCosineForStrong;
-    const passesStrongLexical =
-      bestLexical >= RAG_CONFIG.retrieval.minLexicalForStrong && termCoverage >= 0.35;
+    const passesVerifiedLexical =
+      bestLexical >= RAG_CONFIG.retrieval.minLexicalForStrong &&
+      (hasSingleChunkMultiTermCooccurrence || hasStrongDomainMatch);
 
-    if (!passesPartialVector && !passesStrongLexical) {
-      return bestCosine < RAG_CONFIG.retrieval.minCosineForPartial && !hasDomainExpansion
-        ? "out_of_scope"
-        : "insufficient";
+    if (!passesPartialVector && !passesVerifiedLexical) {
+      return bestCosine < 0.56 && !hasDomainExpansion ? "out_of_scope" : "insufficient";
     }
 
-    if (passesStrongVector || (passesPartialVector && passesStrongLexical)) {
+    if (passesStrongVector || (passesPartialVector && (hasSingleChunkMultiTermCooccurrence || hasStrongDomainMatch))) {
       return "sufficient";
     }
 
-    return "partial";
+    return hasSingleChunkMultiTermCooccurrence || hasDomainExpansion ? "partial" : "insufficient";
   }
 
   // Lexical-only mode (when GEMINI_API_KEY is absent or embed quota paused)
-  if (!hasDomainExpansion && termCoverage < 0.35) {
+  if (!hasDomainExpansion && !hasSingleChunkMultiTermCooccurrence) {
     return "insufficient";
   }
-  if (bestLexical >= RAG_CONFIG.retrieval.minLexicalForStrong && termCoverage >= 0.35) {
+  if (
+    bestLexical >= RAG_CONFIG.retrieval.minLexicalForStrong &&
+    (hasStrongDomainMatch || hasSingleChunkMultiTermCooccurrence)
+  ) {
     return "sufficient";
   }
-  if (bestLexical >= RAG_CONFIG.retrieval.minLexicalForPartial && termCoverage >= 0.22) {
+  if (
+    bestLexical >= RAG_CONFIG.retrieval.minLexicalForPartial &&
+    (hasStrongDomainMatch || hasSingleChunkMultiTermCooccurrence || matchMetrics.bestChunkExtraMatches >= 1)
+  ) {
     return "partial";
   }
   return "insufficient";

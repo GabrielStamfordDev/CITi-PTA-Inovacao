@@ -55,8 +55,8 @@ export interface AssistantResponse {
 const ACERVO_DIR = resolveProjectPath("acervo-pdf");
 const PROMPT_PTCF_PATH = resolveProjectPath("src", "prompts", "assistente-cuida.ptcf.md");
 const GEMINI_MODELS = [
-  "gemini-3.1-flash-lite",
   "gemini-flash-lite-latest",
+  "gemini-3.1-flash-lite",
   "gemini-3.8-flash",
   "gemini-4-hydrogen",
 ];
@@ -355,6 +355,11 @@ function buildInsufficientOrOutOfScopeAnswer(params: {
 }): string {
   const firstName = params.user?.nome?.trim().split(/\s+/)[0];
   const prefix = firstName ? `${firstName}, ` : "";
+  const normQ = normalizeText(params.question);
+  const isEmergencyRedFlag =
+    /\b(dor no peito|aperto no peito|infarto|angina|falta de ar|desmaio|desmaiou|convulsao|convulsoes|avc|derrame|hemorragia|sangramento intenso)\b/.test(
+      normQ
+    );
 
   if (params.evidenceStatus === "out_of_scope") {
     return [
@@ -380,15 +385,24 @@ function buildInsufficientOrOutOfScopeAnswer(params: {
     ].join("\n");
   }
 
+  if (isEmergencyRedFlag) {
+    return [
+      `${prefix}não encontrei informações suficientes sobre esse sintoma específico no acervo científico do CuiDA, portanto **não posso opinar nem orientar clinicamente sobre isso**.`,
+      "",
+      "**Atenção de urgência**",
+      "Os documentos do CuiDA são voltados apenas ao cuidado cotidiano na Doença de Alzheimer. Se alguém estiver apresentando esse sinal de alerta clínico agora (como dor no peito, falta de ar ou perda de consciência), **procure imediatamente um pronto-socorro ou acione o SAMU (192)**.",
+    ].join("\n");
+  }
+
   return [
-    `${prefix}consultei todos os documentos científicos indexados no acervo do CuiDA, mas **não encontrei evidências suficientes e específicas** para responder a essa questão com a segurança clínica necessária.`,
+    `${prefix}não encontrei informações suficientes sobre isso nos documentos científicos indexados no acervo do CuiDA, portanto **não posso opinar com segurança sobre essa questão**.`,
     "",
     "**Por que prefiro não improvisar**",
-    "O CuiDA responde apenas com base comprovada em diretrizes oficiais (ABRAz, OMS iSupport, Ministério da Saúde/PCDT, NICE NG97 e artigos geriátricos do acervo). Quando um tema específico não aparece com clareza nos PDFs, o mais seguro é não completar com suposições.",
+    "O CuiDA responde apenas com base comprovada nos guias oficiais de cuidado na Doença de Alzheimer (ABRAz, OMS iSupport, Ministério da Saúde/PCDT, NICE NG97 e artigos geriátricos do acervo). Quando um tema ou sintoma específico não está coberto com clareza nos PDFs, o mais seguro é não completar com suposições.",
     "",
     "**O que fazer na prática**",
-    "- Tente reformular com mais detalhes sobre a dificuldade de cuidado no dia a dia.",
-    "- Para questões clínicas específicas, exames, sintomas novos ou condutas individuais, converse diretamente com o médico geriatra ou equipe de saúde que acompanha o caso.",
+    "- Para sintomas clínicos agudos, dor persistente ou avaliação individual, converse diretamente com um médico ou serviço de saúde.",
+    "- Se quiser ajuda com o manejo cotidiano do Alzheimer (banho, sono, diálogo, agitação ou direitos no SUS), pode perguntar com mais detalhes que consulto o acervo para você.",
   ].join("\n");
 }
 
@@ -747,6 +761,20 @@ ${chunk.content}
   }
 
   if (!finalAnswer) {
+    // No modo offline sem Gemini, só exibe trechos crus se houver evidência suficiente e sólida
+    if (retrieval.evidenceStatus !== "sufficient") {
+      return {
+        answer: buildInsufficientOrOutOfScopeAnswer({
+          evidenceStatus: "insufficient",
+          user: params.user,
+          question,
+        }),
+        sources: [],
+        suggestions: deriveContextualSuggestions(retrieval.chunks),
+        engine: "rag-local",
+        evidenceStatus: "insufficient",
+      };
+    }
     finalAnswer = buildDbGroundedFallbackAnswer({
       user: params.user,
       chunks: retrieval.chunks,

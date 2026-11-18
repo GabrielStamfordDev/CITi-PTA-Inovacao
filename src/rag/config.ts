@@ -32,10 +32,10 @@ export const RAG_CONFIG = {
     rrfK: Number(process.env.RAG_RRF_K || 60),
     vectorWeight: Number(process.env.RAG_VECTOR_WEIGHT || 1.0),
     lexicalWeight: Number(process.env.RAG_LEXICAL_WEIGHT || 0.85),
-    // Empirically calibrated thresholds (tuned after running yarn rag:eval on the 13 benchmark cases)
-    minCosineForStrong: Number(process.env.RAG_MIN_COSINE_STRONG || 0.64),
-    minCosineForPartial: Number(process.env.RAG_MIN_COSINE_PARTIAL || 0.57),
-    minLexicalForStrong: Number(process.env.RAG_MIN_LEXICAL_STRONG || 0.14),
-    minLexicalForPartial: Number(process.env.RAG_MIN_LEXICAL_PARTIAL || 0.06),
+    // Empirically calibrated thresholds (tuned after running yarn rag:eval + clinical negative probes)
+    minCosineForStrong: Number(process.env.RAG_MIN_COSINE_STRONG || 0.65),
+    minCosineForPartial: Number(process.env.RAG_MIN_COSINE_PARTIAL || 0.62),
+    minLexicalForStrong: Number(process.env.RAG_MIN_LEXICAL_STRONG || 0.16),
+    minLexicalForPartial: Number(process.env.RAG_MIN_LEXICAL_PARTIAL || 0.09),
   },
 } as const;

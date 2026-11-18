@@ -159,6 +159,22 @@ const EVAL_DATASET: EvalCase[] = [
     expectedTopicRegex: /$^/,
     expectNoEvidence: true,
   },
+  {
+    id: 14,
+    category: "Sintoma clínico agudo fora do acervo (dor no peito)",
+    question: "minha mãe está sentindo dor no peito. O que faço?",
+    expectedDocs: [],
+    expectedTopicRegex: /$^/,
+    expectNoEvidence: true,
+  },
+  {
+    id: 15,
+    category: "Sintoma clínico ortopédico fora do acervo (dor no joelho)",
+    question: "meu pai está com dor forte no joelho direito ao andar, qual pomada devo passar?",
+    expectedDocs: [],
+    expectedTopicRegex: /$^/,
+    expectNoEvidence: true,
+  },
 ];
 
 function evaluateLegacyBaseline(evalCase: EvalCase) {
@@ -223,7 +239,12 @@ function evaluateLegacyBaseline(evalCase: EvalCase) {
 
 async function main() {
   const withLlm = process.argv.includes("--with-llm");
-  console.log("=== Avaliação Objetiva do RAG Híbrido CuiDA (13 Casos) ===\n");
+  const forceLexicalOnly = process.argv.includes("--lexical-only");
+  console.log(
+    `=== Avaliação Objetiva do RAG Híbrido CuiDA (${EVAL_DATASET.length} Casos${
+      forceLexicalOnly ? " | Modo Lexical-Only" : ""
+    }) ===\n`
+  );
 
   const inScopeCases = EVAL_DATASET.filter((c) => !c.expectNoEvidence);
   const noEvidenceCases = EVAL_DATASET.filter((c) => c.expectNoEvidence);
@@ -243,8 +264,10 @@ async function main() {
   let legNoEvidenceCorrect = 0;
 
   for (const tc of EVAL_DATASET) {
-    const res = await retrieveHybridRagContext(tc.question, { topK: 6 });
-    await new Promise((r) => setTimeout(r, 1200));
+    const res = await retrieveHybridRagContext(tc.question, { topK: 6, forceLexicalOnly });
+    if (!forceLexicalOnly) {
+      await new Promise((r) => setTimeout(r, 1200));
+    }
     const legacy = evaluateLegacyBaseline(tc);
 
     if (tc.expectNoEvidence) {
