@@ -79,15 +79,21 @@ docker compose up -d
 
 *(Caso utilize PostgreSQL instalado direto no sistema sem Docker, garanta que exista um banco chamado `cuida` com usuário/senha compatíveis com seu `.env`.)*
 
-### Passo 4 — Preparar o banco (Prisma + Migrações + Seed)
+### Passo 4 — Preparar o banco (Prisma + Migrações + Seed + Indexação RAG)
 
-Execute os três comandos abaixo em sequência para gerar o Prisma Client, criar as tabelas e popular os conteúdos iniciais (eventos, links, artigos, FAQs e conta de demonstração):
+Execute os comandos abaixo em sequência para gerar o Prisma Client, criar as tabelas (incluindo extensão `pgvector`), popular os conteúdos iniciais e indexar o conteúdo integral dos PDFs de [`acervo-pdf/`](./acervo-pdf):
 
 ```bash
 yarn generate
-yarn migration
+yarn migration:deploy
 yarn seed
+yarn rag:ingest
 ```
+
+> **Sobre a indexação (`yarn rag:ingest`):**
+> * Na primeira execução, extrai todas as páginas dos PDFs em `acervo-pdf/`, divide em trechos estruturais e gera os vetores semânticos (`gemini-embedding-001`, 768 dimensões) armazenados no `pgvector`.
+> * **É incremental e idempotente:** execuções seguintes verificam o hash SHA-256 e ignoram documentos inalterados sem custo de API. Ao adicionar, substituir ou remover um PDF em `acervo-pdf/`, basta rodar `yarn rag:ingest` novamente.
+> * Caso `GEMINI_API_KEY` não esteja definida ou atinja a cota diária gratuita de embeddings, passe `yarn rag:ingest -- --lexical-only` (ou execute novamente depois para preencher apenas os vetores pendentes): o assistente continua pesquisando em todos os textos via busca textual do PostgreSQL.
 
 ### Passo 5 — Iniciar a aplicação
 
@@ -122,6 +128,9 @@ Você pode criar sua própria conta clicando em **Registrar** ou entrar imediata
 | `yarn typecheck` | Verifica toda a tipagem TypeScript sem gerar arquivos (`tsc --noEmit`). |
 | `yarn seed` | Popula o banco local com conta demo, eventos, links de apoio, artigos e FAQs. |
 | `yarn seed:prod` | Executa o seed compilado (`node dist/prisma/seed.js`) em produção. |
+| `yarn rag:ingest` | Indexa/atualiza incrementalmente os PDFs de `acervo-pdf/` no PostgreSQL (`pgvector` + FTS). |
+| `yarn rag:ingest:prod` | Executa a ingestão RAG compilada (`node dist/src/rag/ingestCli.js`). |
+| `yarn rag:eval` | Executa a bateria objetiva de avaliação de recuperação do RAG (13 cenários). |
 | `yarn studio` | Abre a interface visual do **Prisma Studio** no navegador para inspecionar o banco de dados. |
 | `yarn migration` | Executa migrações pendentes do Prisma em desenvolvimento. |
 | `yarn migration:deploy` | Aplica migrações existentes no banco de produção sem alterar histórico. |
@@ -156,6 +165,8 @@ Além de rodar localmente via Docker + `yarn dev`, o **CuiDA** já está configu
 
 > **Nota do plano gratuito do Render:** Após ~15 minutos sem acessos, a instância hiberna e leva cerca de **30 a 50 segundos** para acordar na primeira requisição (os dados permanecem salvos no Neon).
 
+> **Sobre a indexação RAG na nuvem (Neon):** como a ingestão processa os PDFs pesados do acervo e o plano gratuito do Render tem 512 MB de RAM, rode `yarn rag:ingest` do seu computador apontando `DATABASE_URL` / `DIRECT_URL` temporariamente no terminal para o Neon (sem gravar no `.env` local) sempre que adicionar novos PDFs ao acervo.
+
 > **Sobre o seed manual (opcional):** se precisar forçar a carga inicial a partir de um build local conectado ao banco remoto, execute `yarn build && yarn seed:prod` (ou `node dist/prisma/seed.js --force`).
 
 ---
@@ -166,26 +177,27 @@ Além de rodar localmente via Docker + `yarn dev`, o **CuiDA** já está configu
 CITi-PTA-Inovacao/
 ├── acervo-pdf/          # PDFs científicos e guias oficiais indexados pelo Assistente
 ├── prisma/
-│   ├── migrations/      # Histórico de migrações do banco
-│   ├── schema.prisma    # Modelagem do banco PostgreSQL
-│   └── seed.ts          # Carga inicial de dados e usuário demo
+│   ├── migrations/      # Histórico de migrações (inclui extensão pgvector e FTS)
+│   ├── schema.prisma    # Modelagem PostgreSQL + RagDocument / RagChunk (vector 768d)
+│   └── seed.ts          # Carga inicial idempotente de dados e usuário demo
 ├── public/
 │   ├── assets/          # Imagens e ilustrações do aplicativo
 │   ├── index.html       # Interface responsiva (Mobile + Site PC)
-│   └── app.js           # Lógica de telas, acessibilidade, voz e chat do Assistente
+│   └── app.js           # Lógica de telas, acessibilidade, voz e chat com citações #page=N
 ├── src/
 │   ├── controllers/     # Controladores HTTP (UserController, AppController)
-│   ├── data/            # Base estruturada dos documentos científicos
+│   ├── data/            # Metadados oficiais e contingência curada
 │   ├── database/        # Instância compartilhada do Prisma Client
 │   ├── middlewares/     # Autenticação JWT HttpOnly e proteção anti-IDOR
-│   ├── prompts/         # Prompt PTCF em Markdown (assistente-cuida.ptcf.md)
+│   ├── prompts/         # Prompt PTCF com isolamento contra prompt injection
+│   ├── rag/             # Extração por página (pdfjs-dist), chunking, embeddings, busca híbrida RRF e avaliação
 │   ├── repositories/    # Camada de acesso ao banco via Prisma
-│   ├── services/        # Motor RAG + Gemini (AssistantService) e envio de e-mail (MailService)
+│   ├── services/        # Orquestração Assistente CuiDA + verificação de citações + e-mail Brevo
 │   ├── utils/           # Assinatura HS256 e resolução de caminhos dev/produção
 │   ├── routes.ts        # Definição das rotas da API
 │   └── server.ts        # Entrada do servidor Express, proxy reverso e arquivos estáticos
 ├── .env.example         # Modelo seguro de variáveis de ambiente
-├── docker-compose.yml   # Container PostgreSQL 15 para desenvolvimento local
+├── docker-compose.yml   # Container pgvector/pgvector:pg15 para desenvolvimento local
 ├── package.json         # Dependências e scripts Yarn
 └── render.yaml          # Blueprint de deploy gratuito no Render
 ```

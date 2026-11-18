@@ -4,6 +4,7 @@ export interface ScientificSourceMeta {
   institution: string;
   year: string;
   focus: string;
+  documentType?: string;
 }
 
 export interface ScientificChunk {
@@ -17,6 +18,7 @@ export interface ScientificChunk {
   whatToAvoid: string[];
   whenToSeekDoctor: string;
   followUpSuggestions: string[];
+  provenance?: "curated-summary";
 }
 
 export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
@@ -26,6 +28,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "ABRAz — Associação Brasileira de Alzheimer e Condições Similares",
     year: "2026",
     focus: "Higiene, alimentação, segurança, manejo de sintomas, cuidado profissional e direitos no SUS/Receita Federal",
+    documentType: "guia_cuidadores",
   },
   {
     filename: "drlucasgeriatra-idoso-quer-sair-de-casa.pdf",
@@ -33,6 +36,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "Dr. Lucas Motta — Médico Geriatra (CRM/SP 156.222 | RQE 121021)",
     year: "2026",
     focus: "Desejo de ir embora, síndrome do entardecer (sundowning), validação e redirecionamento",
+    documentType: "artigo_geriatria",
   },
   {
     filename: "drlucasgeriatra-perambulacao-no-alzheimer.pdf",
@@ -40,6 +44,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "Dr. Lucas Motta — Médico Geriatra (CRM/SP 156.222 | RQE 121021)",
     year: "2026",
     focus: "Perambulação (wandering), adaptação ambiental, identificação, GPS e condução segura",
+    documentType: "artigo_geriatria",
   },
   {
     filename: "API_04-Banho.pdf",
@@ -47,6 +52,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "Profa. Dra. Thais Bento Lima-Silva, Glaucia Alvarenga & Laís Silva (EACH-USP / ABRAz-SP)",
     year: "2021",
     focus: "Resistência ao banho, preservação da dignidade, segurança no banheiro e autonomia",
+    documentType: "cartilha_tecnica",
   },
   {
     filename: "API_05-Dialogo.pdf",
@@ -54,6 +60,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "Dr. Fernando Freire — Médico Geriatra (HC-FMUSP | CRM 179451)",
     year: "2026",
     focus: "Terapia de Validação (Naomi Feil), comunicação não-imperativa, repetição de perguntas e desescalada",
+    documentType: "guia_comportamental",
   },
   {
     filename: "API_01-MS-PCDT-DA.pdf",
@@ -61,6 +68,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "Ministério da Saúde / CONITEC (Brasil)",
     year: "2025",
     focus: "Diretrizes nacionais no SUS, tratamento não farmacológico prioritário em SPCD, medicações e apoio psicoterapêutico",
+    documentType: "protocolo_clinico",
   },
   {
     filename: "API_02-iSupport-DA.pdf",
@@ -68,6 +76,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "Organização Mundial da Saúde (OMS / WHO)",
     year: "2019",
     focus: "Treinamento global para cuidadores informais, autocuidado emocional, refeições e manejo de comportamentos",
+    documentType: "manual_oms",
   },
   {
     filename: "API_03-dementia-assessment-management-and-support.pdf",
@@ -75,6 +84,7 @@ export const SCIENTIFIC_SOURCES: ScientificSourceMeta[] = [
     institution: "NICE — National Institute for Health and Care Excellence",
     year: "2018/2025",
     focus: "Avaliação estruturada de causas clínicas de agitação (dor, delirium), manejo do sono e suporte aos cuidadores",
+    documentType: "diretriz_internacional",
   },
 ];
 

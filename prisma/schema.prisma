@@ -86,3 +86,44 @@ model Faq {
   resposta String
   ordem    Int
 }
+
+model RagDocument {
+  id                  Int        @id @default(autoincrement())
+  filename            String     @unique
+  title               String?
+  authorOrInstitution String?
+  publicationYear     String?
+  documentType        String?
+  focus               String?
+  metadataSource      String?
+  fileHash            String
+  pageCount           Int?
+  totalWords          Int?
+  status              String     @default("processed") // processed | needs_ocr | failed | removed
+  errorMessage        String?
+  ingestedAt          DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  chunks              RagChunk[]
+
+  @@index([status])
+}
+
+model RagChunk {
+  id             Int                          @id @default(autoincrement())
+  chunkKey       String                       @unique
+  documentId     Int
+  content        String
+  sectionTitle   String?
+  startPage      Int
+  endPage        Int
+  position       Int
+  contentHash    String
+  embeddingModel String?
+  embeddingDim   Int?
+  embedding      Unsupported("vector(768)")?
+  createdAt      DateTime                     @default(now())
+  document       RagDocument                  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, position])
+  @@index([startPage, endPage])
+}

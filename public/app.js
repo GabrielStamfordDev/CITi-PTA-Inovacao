@@ -1653,14 +1653,29 @@ function renderAssistantMessages(scrollBehavior = "preserve") {
                <p class="text-[11px] font-bold uppercase tracking-wide text-[#5b21b6]">Fontes científicas consultadas</p>
                <div class="flex flex-wrap gap-1.5">
                  ${msg.sources
-                   .map(
-                     (src) => `
-                     <a href="${escapeHtml(src.url)}" target="_blank" rel="noopener noreferrer"
-                        title="${escapeHtml(src.institution)}"
+                   .map((src) => {
+                     const targetUrl = src.pageUrl || src.url;
+                     const pageTag = src.startPage
+                       ? src.endPage && src.endPage !== src.startPage
+                         ? ` • págs. ${src.startPage}–${src.endPage}`
+                         : ` • pág. ${src.startPage}`
+                       : "";
+                     const tooltip = [
+                       src.institution,
+                       src.year ? `(${src.year})` : "",
+                       src.sectionTitle ? `Seção: ${src.sectionTitle}` : "",
+                     ]
+                       .filter(Boolean)
+                       .join(" | ");
+                     const shortTitle =
+                       src.title.length > 36 ? src.title.slice(0, 36) + "..." : src.title;
+                     return `
+                     <a href="${escapeHtml(targetUrl)}" target="_blank" rel="noopener noreferrer"
+                        title="${escapeHtml(tooltip)}"
                         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-[11px] font-medium text-[#5b21b6] transition">
-                       <span>📄 ${escapeHtml(src.title.length > 42 ? src.title.slice(0, 42) + "..." : src.title)}</span>
-                     </a>`
-                   )
+                       <span>📄 ${escapeHtml(shortTitle + pageTag)}</span>
+                     </a>`;
+                   })
                    .join("")}
                </div>
              </div>`

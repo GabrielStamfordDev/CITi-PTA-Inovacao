@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "concurrently \"ts-node-dev --poll --exit-child -r tsconfig-paths/register --respawn --transpile-only --ignore-watch node_modules --no-notify src/server.ts\" \"prisma generate --watch\"",
     "build": "prisma generate && tsc",
@@ -13,6 +16,9 @@
     "studio": "prisma studio",
     "seed": "prisma db seed",
     "seed:prod": "node dist/prisma/seed.js",
+    "rag:ingest": "ts-node-dev --transpile-only src/rag/ingestCli.ts",
+    "rag:ingest:prod": "node dist/src/rag/ingestCli.js",
+    "rag:eval": "ts-node-dev --transpile-only src/rag/evaluateCli.ts",
     "typecheck": "tsc --noEmit"
   },
   "prisma": {
@@ -22,7 +28,8 @@
     "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "pdfjs-dist": "^6.5.438"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
