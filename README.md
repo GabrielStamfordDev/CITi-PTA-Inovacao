@@ -63,7 +63,7 @@ O arquivo `.env` já vem pronto para rodar em modo local:
 
 | Variável | Obrigatória? | Para que serve |
 | :--- | :---: | :--- |
-| `DATABASE_URL` (e `DATABASE_*`) | **Sim** | Conexão com o banco PostgreSQL (já alinhada com o `docker-compose.yml`). |
+| `DATABASE_URL` e `DIRECT_URL` | **Sim** | Conexões com o PostgreSQL. Localmente, ambas apontam para o banco Docker (`postgresql://postgres:docker@localhost:5432/cuida`). Na nuvem (Neon), `DATABASE_URL` usa o endpoint *pooled* e `DIRECT_URL` usa o endpoint direto para migrações. |
 | `SERVER_PORT` | **Sim** | Porta HTTP da aplicação (padrão: `3001`). |
 | `GEMINI_API_KEY` | Opcional | Chave gratuita do [Google AI Studio](https://aistudio.google.com/) para respostas generativas com o Gemini. **Sem ela**, o assistente continua funcionando via motor científico local (`rag-local`). |
 | `MAIL_PROVIDER` / `BREVO_API_KEY` | Opcional | Envio real de código de recuperação de senha por e-mail. Com `MAIL_PROVIDER=console`, o código de 6 dígitos é exibido no terminal do servidor. |
@@ -133,22 +133,30 @@ Você pode criar sua própria conta clicando em **Registrar** ou entrar imediata
 Além de rodar localmente via Docker + `yarn dev`, o **CuiDA** já está configurado para publicação gratuita na nuvem mantendo o modo local intacto:
 
 1. **Banco PostgreSQL no [Neon](https://neon.tech/):**
-   * Crie um projeto gratuito e copie a *Connection String* (`postgresql://...sslmode=require`).
+   * Crie um projeto gratuito e abra o botão **Connect**.
+   * Copie **duas URLs**:
+     * **`DATABASE_URL` (Pooled):** ative a opção **Connection pooling** (hostname com `-pooler`) — usada pela aplicação em execução.
+     * **`DIRECT_URL` (Direta):** desative **Connection pooling** (hostname sem `-pooler`) — usada pelo Prisma para executar migrações (`yarn migration:deploy`).
 2. **Backend + Frontend no [Render](https://render.com/):**
-   * Conecte este repositório no Render como **Web Service** (ou use o arquivo [`render.yaml`](./render.yaml) via **New → Blueprint**).
+   * Conecte este repositório no Render como **Web Service** (ou use [`render.yaml`](./render.yaml) via **New → Blueprint**).
    * **Build Command:** `yarn install --production=false && yarn build`
    * **Start Command:** `yarn migration:deploy && yarn seed:prod && yarn start`
+     *(O `seed` é idempotente e não destrutivo: popula apenas quando as tabelas ainda estão vazias e ignora reinicializações seguintes; passe `--force` caso queira sincronizar os itens padrão manualmente.)*
    * **Health Check Path:** `/api/health`
 3. **Variáveis de Ambiente no painel do Render (`Environment`):**
    * `NODE_ENV` = `production`
-   * `DATABASE_URL` = *(cole a URL do Neon)*
+   * `DATABASE_URL` = *(URL do Neon com `Connection pooling` ligado — `-pooler`)*
+   * `DIRECT_URL` = *(URL direta do Neon com `Connection pooling` desligado — sem `-pooler`)*
    * `AUTH_SECRET` = *(string aleatória longa, ou gerada automaticamente pelo `render.yaml`)*
    * `GEMINI_API_KEY` = *(sua chave do Google AI Studio)*
-   * `MAIL_PROVIDER` = `brevo` *(ou `console` para testar sem envio real)*
+   * `MAIL_PROVIDER` = `brevo` *(envio real automático; mantenha `console` apenas em desenvolvimento local)*
    * `BREVO_API_KEY` = *(sua chave da Brevo)*
+   * `MAIL_FROM_NAME` = `CuiDA Apoio`
    * `MAIL_FROM_EMAIL` = *(seu e-mail remetente verificado na Brevo)*
 
 > **Nota do plano gratuito do Render:** Após ~15 minutos sem acessos, a instância hiberna e leva cerca de **30 a 50 segundos** para acordar na primeira requisição (os dados permanecem salvos no Neon).
+
+> **Sobre o seed manual (opcional):** se precisar forçar a carga inicial a partir de um build local conectado ao banco remoto, execute `yarn build && yarn seed:prod` (ou `node dist/prisma/seed.js --force`).
 
 ---
 

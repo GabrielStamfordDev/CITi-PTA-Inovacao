@@ -9,15 +9,7 @@ async function seedUsers() {
 
   await prisma.user.upsert({
     where: { email: "maria@cuida.com" },
-    update: {
-      dataNascimento: "15/05/1972",
-      idade: 54,
-      pessoaComAlzheimer: "Dona Tereza",
-      parentesco: "Filho(a)",
-      estagioDaDoenca: "Moderado",
-      cidade: "Recife",
-      estado: "PE - Pernambuco",
-    },
+    update: {},
     create: {
       nome: "Maria Silva",
       email: "maria@cuida.com",
@@ -72,48 +64,59 @@ async function seedEventos() {
 }
 
 async function seedLinksApoio() {
-  // Links default alinhados às 5 opções do protótipo no Figma.
-  // Substitua pelas URLs finais (ex.: convite real do grupo de WhatsApp) quando disponíveis.
-  await prisma.linkApoio.deleteMany();
-  await prisma.linkApoio.createMany({
-    data: [
-      {
-        categoria: "instagram",
-        titulo: "ABRAZ Pernambuco",
-        subtitulo: "@abrazpernambuco",
-        url: "https://www.instagram.com/abrazpernambuco/",
-        icone: "instagram",
-      },
-      {
-        categoria: "whatsapp",
-        titulo: "Cuidadores de Recife",
-        subtitulo: "Grupo no WhatsApp (link provisório)",
-        url: "https://wa.me/5581999999999?text=Ol%C3%A1!%20Gostaria%20de%20participar%20do%20grupo%20de%20cuidadores%20CuiDA.",
-        icone: "whatsapp",
-      },
-      {
-        categoria: "facebook",
-        titulo: "Cuidadores Pernambuco",
-        subtitulo: "Comunidades de cuidadores em Pernambuco",
-        url: "https://www.facebook.com/search/groups/?q=cuidadores%20pernambuco",
-        icone: "facebook",
-      },
-      {
-        categoria: "facebook",
-        titulo: "Grupo de cuidadores de Alzheimer",
-        subtitulo: "Busca de grupos de apoio no Facebook",
-        url: "https://www.facebook.com/search/groups/?q=cuidadores%20alzheimer%20apoio",
-        icone: "facebook",
-      },
-      {
-        categoria: "facebook",
-        titulo: "GAFA - Apoio a familiares de pessoas com Alzheimer",
-        subtitulo: "Grupo de Apoio a Familiares no Facebook",
-        url: "https://www.facebook.com/GAFABURITIS",
-        icone: "facebook",
-      },
-    ],
-  });
+  // Links default alinhados às 5 opções do protótipo no Figma (upsert não destrutivo).
+  const linksData = [
+    {
+      categoria: "instagram",
+      titulo: "ABRAZ Pernambuco",
+      subtitulo: "@abrazpernambuco",
+      url: "https://www.instagram.com/abrazpernambuco/",
+      icone: "instagram",
+    },
+    {
+      categoria: "whatsapp",
+      titulo: "Cuidadores de Recife",
+      subtitulo: "Grupo no WhatsApp (link provisório)",
+      url: "https://wa.me/5581999999999?text=Ol%C3%A1!%20Gostaria%20de%20participar%20do%20grupo%20de%20cuidadores%20CuiDA.",
+      icone: "whatsapp",
+    },
+    {
+      categoria: "facebook",
+      titulo: "Cuidadores Pernambuco",
+      subtitulo: "Comunidades de cuidadores em Pernambuco",
+      url: "https://www.facebook.com/search/groups/?q=cuidadores%20pernambuco",
+      icone: "facebook",
+    },
+    {
+      categoria: "facebook",
+      titulo: "Grupo de cuidadores de Alzheimer",
+      subtitulo: "Busca de grupos de apoio no Facebook",
+      url: "https://www.facebook.com/search/groups/?q=cuidadores%20alzheimer%20apoio",
+      icone: "facebook",
+    },
+    {
+      categoria: "facebook",
+      titulo: "GAFA - Apoio a familiares de pessoas com Alzheimer",
+      subtitulo: "Grupo de Apoio a Familiares no Facebook",
+      url: "https://www.facebook.com/GAFABURITIS",
+      icone: "facebook",
+    },
+  ];
+
+  for (const item of linksData) {
+    const existing = await prisma.linkApoio.findFirst({
+      where: { titulo: item.titulo },
+    });
+
+    if (existing) {
+      await prisma.linkApoio.update({
+        where: { id: existing.id },
+        data: item,
+      });
+    } else {
+      await prisma.linkApoio.create({ data: item });
+    }
+  }
 }
 
 async function seedArtigos() {
@@ -222,38 +225,67 @@ async function seedArtigos() {
 }
 
 async function seedFaqs() {
-  await prisma.faq.deleteMany();
-  await prisma.faq.createMany({
-    data: [
-      {
-        ordem: 1,
-        pergunta: "O Alzheimer tem cura?",
-        resposta:
-          "Não, o Alzheimer não tem cura, mas existem tratamentos que podem ajudar a retardar os sintomas.",
-      },
-      {
-        ordem: 2,
-        pergunta: "Quais os primeiros sinais do Alzheimer?",
-        resposta:
-          "Os primeiros sinais costumam incluir esquecimento frequente de fatos recentes, dificuldade para encontrar palavras, repetição de perguntas, desorientação no tempo ou espaço e mudanças sutis de humor ou na realização de tarefas habituais.",
-      },
-      {
-        ordem: 3,
-        pergunta: "É normal que os sintomas piorem à noite?",
-        resposta:
-          "Sim! Esse fenômeno é conhecido como Síndrome do Pôr do Sol. No final da tarde e início da noite, a pessoa pode ficar mais confusa, agitada ou ansiosa. Manter uma rotina calma, boa iluminação e ambiente tranquilo ajuda a reduzir esses episódios.",
-      },
-      {
-        ordem: 4,
-        pergunta: "Pessoas mais velhas têm mais chances de terem DA?",
-        resposta:
-          "Sim. A idade avançada é o principal fator de risco para a Doença de Alzheimer, sendo mais comum após os 65 anos. Contudo, ela não faz parte do envelhecimento normal e também pode ocorrer em pessoas mais jovens.",
-      },
-    ],
-  });
+  const faqsData = [
+    {
+      ordem: 1,
+      pergunta: "O Alzheimer tem cura?",
+      resposta:
+        "Não, o Alzheimer não tem cura, mas existem tratamentos que podem ajudar a retardar os sintomas.",
+    },
+    {
+      ordem: 2,
+      pergunta: "Quais os primeiros sinais do Alzheimer?",
+      resposta:
+        "Os primeiros sinais costumam incluir esquecimento frequente de fatos recentes, dificuldade para encontrar palavras, repetição de perguntas, desorientação no tempo ou espaço e mudanças sutis de humor ou na realização de tarefas habituais.",
+    },
+    {
+      ordem: 3,
+      pergunta: "É normal que os sintomas piorem à noite?",
+      resposta:
+        "Sim! Esse fenômeno é conhecido como Síndrome do Pôr do Sol. No final da tarde e início da noite, a pessoa pode ficar mais confusa, agitada ou ansiosa. Manter uma rotina calma, boa iluminação e ambiente tranquilo ajuda a reduzir esses episódios.",
+    },
+    {
+      ordem: 4,
+      pergunta: "Pessoas mais velhas têm mais chances de terem DA?",
+      resposta:
+        "Sim. A idade avançada é o principal fator de risco para a Doença de Alzheimer, sendo mais comum após os 65 anos. Contudo, ela não faz parte do envelhecimento normal e também pode ocorrer em pessoas mais jovens.",
+    },
+  ];
+
+  for (const item of faqsData) {
+    const existing = await prisma.faq.findFirst({
+      where: { ordem: item.ordem },
+    });
+
+    if (existing) {
+      await prisma.faq.update({
+        where: { id: existing.id },
+        data: item,
+      });
+    } else {
+      await prisma.faq.create({ data: item });
+    }
+  }
 }
 
 async function main() {
+  const forceSeed = process.argv.includes("--force");
+
+  if (!forceSeed) {
+    const [usersCount, eventosCount, linksCount, artigosCount, faqsCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.evento.count(),
+      prisma.linkApoio.count(),
+      prisma.artigo.count(),
+      prisma.faq.count(),
+    ]);
+
+    if (usersCount > 0 && eventosCount > 0 && linksCount > 0 && artigosCount > 0 && faqsCount > 0) {
+      console.log("Banco já populado — seed idempotente ignorado (use --force para sincronizar).");
+      return;
+    }
+  }
+
   await seedUsers();
   await seedEventos();
   await seedLinksApoio();
