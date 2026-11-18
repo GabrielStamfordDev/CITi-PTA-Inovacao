@@ -5,11 +5,14 @@
   "license": "MIT",
   "scripts": {
     "dev": "concurrently \"ts-node-dev --poll --exit-child -r tsconfig-paths/register --respawn --transpile-only --ignore-watch node_modules --no-notify src/server.ts\" \"prisma generate --watch\"",
+    "build": "prisma generate && tsc",
+    "start": "node dist/src/server.js",
     "generate": "prisma generate",
     "migration": "cross-env DATABASE_HOST=localhost prisma migrate dev",
     "migration:deploy": "prisma migrate deploy",
     "studio": "cross-env DATABASE_HOST=localhost prisma studio",
     "seed": "cross-env DATABASE_HOST=localhost prisma db seed",
+    "seed:prod": "node dist/prisma/seed.js",
     "typecheck": "tsc --noEmit"
   },
   "prisma": {

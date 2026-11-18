@@ -42,8 +42,8 @@ O **CuiDA** centraliza informações práticas confiáveis, rede de apoio emocio
 ### Passo 1 — Clonar o repositório e instalar as dependências
 
 ```bash
-git clone <url-do-repositorio>
-cd CuidaA-App
+git clone https://github.com/GabrielStamfordDev/CITi-PTA-Inovacao.git
+cd CITi-PTA-Inovacao
 yarn install
 ```
 
@@ -71,7 +71,7 @@ O arquivo `.env` já vem pronto para rodar em modo local:
 
 ### Passo 3 — Subir o banco de dados PostgreSQL
 
-Com o **Docker Desktop** aberto, execute na raiz de `CuidaA-App`:
+Com o **Docker Desktop** aberto, execute na raiz do projeto (`CITi-PTA-Inovacao`):
 
 ```bash
 docker compose up -d
@@ -117,17 +117,45 @@ Você pode criar sua própria conta clicando em **Registrar** ou entrar imediata
 | Comando | Descrição |
 | :--- | :--- |
 | `yarn dev` | Sobe o servidor Express com recarregamento automático (`ts-node-dev`) e observa o schema do Prisma. |
+| `yarn build` | Gera o Prisma Client e compila o TypeScript para `./dist` (produção). |
+| `yarn start` | Inicia o servidor compilado (`node dist/src/server.js`) em modo produção. |
 | `yarn typecheck` | Verifica toda a tipagem TypeScript sem gerar arquivos (`tsc --noEmit`). |
-| `yarn seed` | Popula o banco com conta demo, eventos, links de apoio, artigos e FAQs. |
+| `yarn seed` | Popula o banco local com conta demo, eventos, links de apoio, artigos e FAQs. |
+| `yarn seed:prod` | Executa o seed compilado (`node dist/prisma/seed.js`) em produção. |
 | `yarn studio` | Abre a interface visual do **Prisma Studio** no navegador para inspecionar o banco de dados. |
 | `yarn migration` | Executa migrações pendentes do Prisma em desenvolvimento. |
+| `yarn migration:deploy` | Aplica migrações existentes no banco de produção sem alterar histórico. |
+
+---
+
+## Deploy Gratuito na Nuvem (Neon + Render)
+
+Além de rodar localmente via Docker + `yarn dev`, o **CuiDA** já está configurado para publicação gratuita na nuvem mantendo o modo local intacto:
+
+1. **Banco PostgreSQL no [Neon](https://neon.tech/):**
+   * Crie um projeto gratuito e copie a *Connection String* (`postgresql://...sslmode=require`).
+2. **Backend + Frontend no [Render](https://render.com/):**
+   * Conecte este repositório no Render como **Web Service** (ou use o arquivo [`render.yaml`](./render.yaml) via **New → Blueprint**).
+   * **Build Command:** `yarn install --production=false && yarn build`
+   * **Start Command:** `yarn migration:deploy && yarn seed:prod && yarn start`
+   * **Health Check Path:** `/api/health`
+3. **Variáveis de Ambiente no painel do Render (`Environment`):**
+   * `NODE_ENV` = `production`
+   * `DATABASE_URL` = *(cole a URL do Neon)*
+   * `AUTH_SECRET` = *(string aleatória longa, ou gerada automaticamente pelo `render.yaml`)*
+   * `GEMINI_API_KEY` = *(sua chave do Google AI Studio)*
+   * `MAIL_PROVIDER` = `brevo` *(ou `console` para testar sem envio real)*
+   * `BREVO_API_KEY` = *(sua chave da Brevo)*
+   * `MAIL_FROM_EMAIL` = *(seu e-mail remetente verificado na Brevo)*
+
+> **Nota do plano gratuito do Render:** Após ~15 minutos sem acessos, a instância hiberna e leva cerca de **30 a 50 segundos** para acordar na primeira requisição (os dados permanecem salvos no Neon).
 
 ---
 
 ## Estrutura de Pastas
 
 ```text
-CuidaA-App/
+CITi-PTA-Inovacao/
 ├── acervo-pdf/          # PDFs científicos e guias oficiais indexados pelo Assistente
 ├── prisma/
 │   ├── migrations/      # Histórico de migrações do banco
@@ -145,10 +173,11 @@ CuidaA-App/
 │   ├── prompts/         # Prompt PTCF em Markdown (assistente-cuida.ptcf.md)
 │   ├── repositories/    # Camada de acesso ao banco via Prisma
 │   ├── services/        # Motor RAG + Gemini (AssistantService) e envio de e-mail (MailService)
-│   ├── utils/           # Assinatura/verificação criptográfica HS256
+│   ├── utils/           # Assinatura HS256 e resolução de caminhos dev/produção
 │   ├── routes.ts        # Definição das rotas da API
-│   └── server.ts        # Entrada do servidor Express e arquivos estáticos
+│   └── server.ts        # Entrada do servidor Express, proxy reverso e arquivos estáticos
 ├── .env.example         # Modelo seguro de variáveis de ambiente
 ├── docker-compose.yml   # Container PostgreSQL 15 para desenvolvimento local
-└── package.json         # Dependências e scripts Yarn
+├── package.json         # Dependências e scripts Yarn
+└── render.yaml          # Blueprint de deploy gratuito no Render
 ```

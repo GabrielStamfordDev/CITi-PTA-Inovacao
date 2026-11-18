@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: cuida-app
+    runtime: node
+    plan: free
+    buildCommand: yarn install --production=false && yarn build
+    startCommand: yarn migration:deploy && yarn seed:prod && yarn start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MAIL_PROVIDER
+        value: console
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: CuiDA Apoio
+      - key: MAIL_FROM_EMAIL
+        value: cuida.apoio@gmail.com

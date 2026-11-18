@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import * as AppRepository from "../repositories/AppRepository";
+import { resolveProjectPath } from "../utils/projectPaths";
 import {
   SCIENTIFIC_CHUNKS,
   SCIENTIFIC_SOURCES,
@@ -45,8 +46,8 @@ interface DynamicDocExcerpt {
   text: string;
 }
 
-const ACERVO_DIR = path.resolve(__dirname, "..", "..", "acervo-pdf");
-const PROMPT_PTCF_PATH = path.resolve(__dirname, "..", "prompts", "assistente-cuida.ptcf.md");
+const ACERVO_DIR = resolveProjectPath("acervo-pdf");
+const PROMPT_PTCF_PATH = resolveProjectPath("src", "prompts", "assistente-cuida.ptcf.md");
 const GEMINI_MODELS = [
   "gemini-3.1-flash-lite",
   "gemini-flash-lite-latest",
