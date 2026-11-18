@@ -4,6 +4,7 @@ let appData = {
   links: [],
   artigos: [],
   faqs: [],
+  forumRooms: [],
   forumMessages: [],
 };
 let navHistory = [];
@@ -546,7 +547,7 @@ function updateBottomNavState(screenId) {
 
   applyNavTabStyle(homeBtn, screenId === "screen-home");
   applyNavTabStyle(assistantBtn, screenId === "screen-assistente");
-  applyNavTabStyle(forumBtn, screenId === "screen-forum");
+  applyNavTabStyle(forumBtn, screenId === "screen-forum" || screenId === "screen-forum-room");
   applyNavTabStyle(profileBtn, screenId === "screen-profile");
 }
 
@@ -626,6 +627,10 @@ async function logout() {
   setCurrentUser(null);
   isEditingProfile = false;
   if (typeof resetAssistantState === "function") resetAssistantState();
+  activeForumRoomId = null;
+  activeForumRoom = null;
+  appData.forumRooms = [];
+  appData.forumMessages = [];
   navHistory = [];
   navigate("screen-welcome", false);
 }
@@ -655,6 +660,9 @@ async function loadAppData() {
     const res = await authFetch("/api/dados");
     if (!res.ok) throw new Error("Erro ao carregar dados");
     appData = await res.json();
+    if (!Array.isArray(appData.forumRooms)) {
+      appData.forumRooms = [];
+    }
     if (!Array.isArray(appData.forumMessages)) {
       appData.forumMessages = [];
     }
@@ -663,6 +671,7 @@ async function loadAppData() {
     renderLinks();
     renderArtigos();
     renderFaqs();
+    renderForumRooms();
     renderForumMessages();
   } catch (err) {
     console.error(err);
@@ -1967,9 +1976,45 @@ document.getElementById("form-assistant")?.addEventListener("submit", async (e) 
 });
 
 // ==================================================
-// 8. FÓRUM DE CUIDADORES (COMUNIDADE MVP)
+// 8. FÓRUM DE CUIDADORES (ESTILO TELEGRAM - VERSÃO A)
 // ==================================================
 let forumSending = false;
+let forumJoining = false;
+let activeForumRoomId = null;
+let activeForumRoom = null;
+const forumMessagesCache = {};
+
+const FORUM_COLOR_MAP = {
+  purple: {
+    iconBg: "bg-purple-100 border-purple-200 text-[#5b21b6]",
+    badgeBg: "bg-purple-100 text-[#5b21b6]",
+    cardHover: "hover:bg-purple-50/70 hover:border-[#7353ba]",
+  },
+  amber: {
+    iconBg: "bg-amber-100 border-amber-200 text-amber-700",
+    badgeBg: "bg-amber-100 text-amber-800",
+    cardHover: "hover:bg-amber-50/70 hover:border-amber-500",
+  },
+  emerald: {
+    iconBg: "bg-emerald-100 border-emerald-200 text-emerald-700",
+    badgeBg: "bg-emerald-100 text-emerald-800",
+    cardHover: "hover:bg-emerald-50/70 hover:border-emerald-600",
+  },
+  rose: {
+    iconBg: "bg-rose-100 border-rose-200 text-rose-700",
+    badgeBg: "bg-rose-100 text-rose-800",
+    cardHover: "hover:bg-rose-50/70 hover:border-rose-500",
+  },
+};
+
+function getForumColorClasses(cor) {
+  return FORUM_COLOR_MAP[cor] || FORUM_COLOR_MAP.emerald;
+}
+
+function formatMemberCount(count) {
+  const n = Number(count) || 0;
+  return n === 1 ? "1 cuidador" : `${n} cuidadores`;
+}
 
 function formatForumTimestamp(isoDate) {
   if (!isoDate) return "";
@@ -1995,6 +2040,193 @@ function formatForumMessageWithLinks(rawText) {
   });
 }
 
+function renderForumRoomCardHtml(room, isMemberSection) {
+  const colors = getForumColorClasses(room.cor);
+  const iconName = room.icone || "messages-square";
+  const lastMsg = room.ultimaMensagem;
+  const previewText = lastMsg
+    ? `${lastMsg.autorNome}: ${lastMsg.conteudo}`
+    : room.descricao;
+  const lastTime = lastMsg ? formatForumTimestamp(lastMsg.createdAt) : "";
+
+  if (isMemberSection) {
+    return `
+      <div onclick="openForumRoom(${room.id})"
+           role="button"
+           tabindex="0"
+           onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); openForumRoom(${room.id}); }"
+           class="cursor-pointer bg-white/95 border border-purple-200/80 ${colors.cardHover} rounded-2xl p-3.5 shadow-sm transition flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl border ${colors.iconBg} flex items-center justify-center shrink-0">
+          <i data-lucide="${escapeHtml(iconName)}" class="w-5 h-5"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <h4 class="font-brand text-sm font-extrabold text-slate-900 truncate">${escapeHtml(room.nome)}</h4>
+              <span class="shrink-0 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                Participando
+              </span>
+            </div>
+            ${lastTime ? `<span class="text-[10px] text-slate-400 font-medium shrink-0">${escapeHtml(lastTime)}</span>` : ""}
+          </div>
+          <p class="text-xs text-slate-600 truncate mt-1">
+            ${escapeHtml(previewText)}
+          </p>
+          <div class="flex items-center gap-3 mt-1.5 text-[11px] font-semibold text-slate-500">
+            <span class="inline-flex items-center gap-1 text-[#5b21b6]">
+              <i data-lucide="users" class="w-3 h-3"></i>
+              <span>${escapeHtml(formatMemberCount(room.membrosCount))}</span>
+            </span>
+            <span>•</span>
+            <span>${Number(room.mensagensCount) || 0} ${(Number(room.mensagensCount) || 0) === 1 ? "mensagem" : "mensagens"}</span>
+          </div>
+        </div>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+      </div>
+    `;
+  }
+
+  return `
+    <div onclick="openForumRoom(${room.id})"
+         role="button"
+         tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); openForumRoom(${room.id}); }"
+         class="cursor-pointer bg-white/95 border border-slate-200 ${colors.cardHover} rounded-2xl p-4 shadow-sm transition space-y-2.5">
+      <div class="flex items-start gap-3">
+        <div class="w-11 h-11 rounded-2xl border ${colors.iconBg} flex items-center justify-center shrink-0">
+          <i data-lucide="${escapeHtml(iconName)}" class="w-5 h-5"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h4 class="font-brand text-sm font-extrabold text-slate-900">${escapeHtml(room.nome)}</h4>
+            <span class="px-2 py-0.5 rounded-full ${colors.badgeBg} text-[10px] font-bold">
+              ${escapeHtml(room.categoria)}
+            </span>
+          </div>
+          <p class="text-xs text-slate-600 mt-1 leading-relaxed">${escapeHtml(room.descricao)}</p>
+        </div>
+      </div>
+
+      ${
+        lastMsg
+          ? `<p class="text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 truncate">
+               <strong class="text-slate-700">${escapeHtml(lastMsg.autorNome)}:</strong> ${escapeHtml(lastMsg.conteudo)}
+             </p>`
+          : ""
+      }
+
+      <div class="flex items-center justify-between gap-2 pt-0.5 flex-wrap">
+        <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+          <span class="inline-flex items-center gap-1 text-slate-700">
+            <i data-lucide="users" class="w-3.5 h-3.5 text-[#5b21b6]"></i>
+            <span>${escapeHtml(formatMemberCount(room.membrosCount))}</span>
+          </span>
+          <span>•</span>
+          <span>${Number(room.mensagensCount) || 0} ${(Number(room.mensagensCount) || 0) === 1 ? "mensagem" : "mensagens"}</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="event.stopPropagation(); openForumRoom(${room.id})"
+                  class="px-3 py-1.5 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition min-h-[34px]">
+            Ver conversa
+          </button>
+          <button type="button" onclick="joinForumRoomFromList(${room.id}, event)"
+                  class="pill-btn-purple px-3.5 py-1.5 text-xs font-bold transition min-h-[34px]">
+            Entrar
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderForumRooms() {
+  const container = document.getElementById("forum-rooms-container");
+  if (!container) return;
+
+  const rooms = Array.isArray(appData.forumRooms) ? appData.forumRooms : [];
+  if (!rooms.length) {
+    container.innerHTML = `
+      <div class="bg-white/90 border border-purple-200 rounded-2xl p-5 text-center">
+        <p class="reader-body font-semibold text-slate-700">Nenhuma comunidade encontrada no momento.</p>
+        <p class="text-xs text-slate-500 mt-1">Toque em Atualizar para tentar novamente.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const myRooms = rooms.filter((r) => r.participando);
+  const exploreRooms = rooms.filter((r) => !r.participando);
+
+  const myRoomsHtml = myRooms.length
+    ? myRooms.map((r) => renderForumRoomCardHtml(r, true)).join("")
+    : `<p class="text-xs text-slate-500 bg-white/80 rounded-2xl p-4 border border-purple-100">Você ainda não entrou em nenhum fórum.</p>`;
+
+  const exploreRoomsHtml = exploreRooms.length
+    ? exploreRooms.map((r) => renderForumRoomCardHtml(r, false)).join("")
+    : `<p class="text-xs text-slate-500 bg-white/80 rounded-2xl p-4 border border-purple-100 text-center">Você já participa de todos os fóruns disponíveis.</p>`;
+
+  container.innerHTML = `
+    <div class="space-y-2.5">
+      <div class="flex items-center justify-between px-0.5">
+        <h3 class="font-brand text-sm font-extrabold text-slate-800 uppercase tracking-wide">
+          Meus Fóruns
+        </h3>
+        <span class="text-[11px] font-semibold text-[#5b21b6]">${myRooms.length}</span>
+      </div>
+      <div class="space-y-2.5">${myRoomsHtml}</div>
+    </div>
+
+    <div class="space-y-2.5">
+      <div class="flex items-center justify-between px-0.5">
+        <h3 class="font-brand text-sm font-extrabold text-slate-800 uppercase tracking-wide">
+          Explorar outros fóruns
+        </h3>
+        <span class="text-[11px] font-semibold text-slate-500">${exploreRooms.length}</span>
+      </div>
+      <div class="space-y-3">${exploreRoomsHtml}</div>
+    </div>
+  `;
+}
+
+async function loadForumRooms(showFeedback = false) {
+  try {
+    const res = await authFetch("/api/forum/salas");
+    if (!res.ok) throw new Error("Erro ao carregar lista de fóruns");
+    const data = await res.json();
+    appData.forumRooms = Array.isArray(data.rooms) ? data.rooms : [];
+    renderForumRooms();
+    lucide.createIcons();
+    if (showFeedback) showToast("Fóruns atualizados!");
+  } catch (err) {
+    console.error(err);
+    if (showFeedback) showToast("Não foi possível atualizar os fóruns agora.");
+  }
+}
+
+function renderActiveForumRoomHeader() {
+  if (!activeForumRoom) return;
+  const titleEl = document.getElementById("forum-room-title");
+  const metaEl = document.getElementById("forum-room-meta");
+  const descEl = document.getElementById("forum-room-desc");
+  const leaveBtn = document.getElementById("forum-room-leave-btn");
+  const composerWrap = document.getElementById("forum-composer-wrapper");
+  const joinBar = document.getElementById("forum-join-bar");
+
+  if (titleEl) titleEl.textContent = activeForumRoom.nome || "Fórum";
+  if (metaEl) {
+    metaEl.textContent = `${formatMemberCount(activeForumRoom.membrosCount)} • ${activeForumRoom.categoria || "Comunidade"}`;
+  }
+  if (descEl) descEl.textContent = activeForumRoom.descricao || "";
+
+  const isMember = Boolean(activeForumRoom.participando || activeForumRoom.padrao);
+  if (leaveBtn) {
+    leaveBtn.classList.toggle("hidden", !isMember || Boolean(activeForumRoom.padrao));
+  }
+  if (composerWrap) composerWrap.classList.toggle("hidden", !isMember);
+  if (joinBar) joinBar.classList.toggle("hidden", isMember);
+}
+
 function renderForumMessages(scrollToEnd = false) {
   const container = document.getElementById("forum-messages-list");
   if (!container) return;
@@ -2003,7 +2235,7 @@ function renderForumMessages(scrollToEnd = false) {
   if (!messages.length) {
     container.innerHTML = `
       <div class="desktop-readable bg-white/90 border border-purple-200 rounded-2xl p-5 text-center">
-        <p class="reader-body font-semibold text-slate-700">Ainda não há mensagens no fórum.</p>
+        <p class="reader-body font-semibold text-slate-700">Ainda não há mensagens neste fórum.</p>
         <p class="text-xs text-slate-500 mt-1">Seja o primeiro a compartilhar uma experiência ou dica!</p>
       </div>
     `;
@@ -2076,39 +2308,190 @@ function renderForumMessages(scrollToEnd = false) {
   }
 }
 
-async function loadForumMessages(showFeedback = false) {
+function syncRoomSummaryInList(roomObj) {
+  if (!roomObj || !Array.isArray(appData.forumRooms)) return;
+  const idx = appData.forumRooms.findIndex((r) => Number(r.id) === Number(roomObj.id));
+  if (idx >= 0) {
+    appData.forumRooms[idx] = { ...appData.forumRooms[idx], ...roomObj };
+  }
+}
+
+async function loadActiveForumRoom(showFeedback = false, scrollToEnd = false) {
+  if (!activeForumRoomId) return;
+  const targetRoomId = activeForumRoomId;
   try {
-    const res = await authFetch("/api/forum/mensagens");
-    if (!res.ok) throw new Error("Erro ao carregar mensagens do fórum");
+    const res = await authFetch(`/api/forum/salas/${targetRoomId}/mensagens`);
+    if (!res.ok) throw new Error("Erro ao carregar mensagens da sala");
     const data = await res.json();
-    appData.forumMessages = Array.isArray(data.messages) ? data.messages : [];
-    renderForumMessages(false);
+    if (activeForumRoomId !== targetRoomId) return;
+
+    if (data.room) {
+      activeForumRoom = data.room;
+      syncRoomSummaryInList(data.room);
+      renderActiveForumRoomHeader();
+    }
+    const msgs = Array.isArray(data.messages) ? data.messages : [];
+    appData.forumMessages = msgs;
+    forumMessagesCache[targetRoomId] = msgs;
+    renderForumMessages(scrollToEnd);
     lucide.createIcons();
-    if (showFeedback) showToast("Fórum atualizado!");
+    if (showFeedback) showToast("Conversa atualizada!");
   } catch (err) {
     console.error(err);
-    if (showFeedback) showToast("Não foi possível atualizar o fórum agora.");
+    if (showFeedback) showToast("Não foi possível atualizar a conversa agora.");
   }
 }
 
 async function openForum() {
-  navigate("screen-forum");
-  renderForumMessages(true);
-  await loadForumMessages(false);
-  renderForumMessages(true);
+  const activeScreenId = document.querySelector(".screen.active")?.id;
+  const comingFromRoom = activeScreenId === "screen-forum-room";
+  if (comingFromRoom && navHistory[navHistory.length - 1] === "screen-forum") {
+    navHistory.pop();
+  }
+  navigate("screen-forum", !comingFromRoom);
+  renderForumRooms();
   lucide.createIcons();
+  await loadForumRooms(false);
 }
 
-// Atualização automática silenciosa do fórum enquanto a tela está aberta (sensação de chat ao vivo)
+async function openForumRoom(roomId) {
+  const id = Number(roomId);
+  if (!Number.isInteger(id) || id <= 0) return;
+
+  activeForumRoomId = id;
+  const cachedRoom = (appData.forumRooms || []).find((r) => Number(r.id) === id);
+  if (cachedRoom) {
+    activeForumRoom = { ...cachedRoom };
+  } else {
+    activeForumRoom = { id, nome: "Fórum", descricao: "", categoria: "", membrosCount: 0, participando: false, padrao: false };
+  }
+
+  appData.forumMessages = Array.isArray(forumMessagesCache[id]) ? forumMessagesCache[id] : [];
+  renderActiveForumRoomHeader();
+  navigate("screen-forum-room");
+  renderForumMessages(true);
+  lucide.createIcons();
+
+  await loadActiveForumRoom(false, true);
+}
+
+async function joinForumRoom(roomId, openAfter = false) {
+  const id = Number(roomId);
+  if (!Number.isInteger(id) || id <= 0 || forumJoining) return;
+
+  forumJoining = true;
+  const joinBtn = document.getElementById("forum-join-btn");
+  if (joinBtn) joinBtn.disabled = true;
+
+  try {
+    const res = await authFetch(`/api/forum/salas/${id}/participar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "join" }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data?.message || "Não foi possível entrar neste fórum.");
+      return;
+    }
+
+    const idx = (appData.forumRooms || []).findIndex((r) => Number(r.id) === id);
+    if (idx >= 0) {
+      appData.forumRooms[idx].participando = Boolean(data.participando);
+      appData.forumRooms[idx].membrosCount = Number(data.membrosCount);
+    }
+
+    if (activeForumRoom && Number(activeForumRoom.id) === id) {
+      activeForumRoom.participando = Boolean(data.participando);
+      activeForumRoom.membrosCount = Number(data.membrosCount);
+      renderActiveForumRoomHeader();
+    }
+
+    renderForumRooms();
+    showToast(data.message || "Você entrou no fórum!");
+
+    if (openAfter) {
+      await openForumRoom(id);
+    } else {
+      lucide.createIcons();
+      document.getElementById("forum-input")?.focus();
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Erro de conexão ao entrar no fórum.");
+  } finally {
+    forumJoining = false;
+    if (joinBtn) joinBtn.disabled = false;
+  }
+}
+
+async function joinForumRoomFromList(roomId, event) {
+  if (event) event.stopPropagation();
+  await joinForumRoom(roomId, true);
+}
+
+async function joinCurrentForumRoom() {
+  if (!activeForumRoomId) return;
+  await joinForumRoom(activeForumRoomId, false);
+}
+
+async function leaveCurrentForumRoom() {
+  if (!activeForumRoomId || forumJoining) return;
+  if (activeForumRoom?.padrao) {
+    showToast("Você participa automaticamente do fórum Acolhimento Geral.");
+    return;
+  }
+
+  forumJoining = true;
+  try {
+    const res = await authFetch(`/api/forum/salas/${activeForumRoomId}/participar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "leave" }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data?.message || "Não foi possível sair deste fórum.");
+      return;
+    }
+
+    const idx = (appData.forumRooms || []).findIndex((r) => Number(r.id) === Number(activeForumRoomId));
+    if (idx >= 0) {
+      appData.forumRooms[idx].participando = Boolean(data.participando);
+      appData.forumRooms[idx].membrosCount = Number(data.membrosCount);
+    }
+
+    showToast(data.message || "Você saiu do fórum.");
+    await openForum();
+  } catch (err) {
+    console.error(err);
+    showToast("Erro de conexão ao sair do fórum.");
+  } finally {
+    forumJoining = false;
+  }
+}
+
+// Atualização automática silenciosa da sala aberta a cada 15 segundos
 setInterval(async () => {
-  const forumScreen = document.getElementById("screen-forum");
-  if (!forumScreen?.classList.contains("active") || document.hidden || forumSending) return;
+  const roomScreen = document.getElementById("screen-forum-room");
+  if (!roomScreen?.classList.contains("active") || !activeForumRoomId || document.hidden || forumSending) {
+    return;
+  }
+  const targetRoomId = activeForumRoomId;
   const list = document.getElementById("forum-messages-list");
   const inputEl = document.getElementById("forum-input");
   try {
-    const res = await authFetch("/api/forum/mensagens");
-    if (!res.ok) return;
+    const res = await authFetch(`/api/forum/salas/${targetRoomId}/mensagens`);
+    if (!res.ok || activeForumRoomId !== targetRoomId) return;
     const data = await res.json();
+    if (data.room) {
+      const membersChanged =
+        !activeForumRoom || Number(activeForumRoom.membrosCount) !== Number(data.room.membrosCount);
+      activeForumRoom = data.room;
+      syncRoomSummaryInList(data.room);
+      if (membersChanged) renderActiveForumRoomHeader();
+    }
+
     const incoming = Array.isArray(data.messages) ? data.messages : [];
     const current = appData.forumMessages || [];
     const lastIncoming = incoming[incoming.length - 1]?.id;
@@ -2117,6 +2500,7 @@ setInterval(async () => {
 
     const nearBottom = list ? list.scrollHeight - list.scrollTop - list.clientHeight < 120 : true;
     appData.forumMessages = incoming;
+    forumMessagesCache[targetRoomId] = incoming;
     renderForumMessages(nearBottom);
     lucide.createIcons();
     if (!nearBottom) showToast("Nova mensagem no fórum");
@@ -2142,7 +2526,7 @@ document.getElementById("forum-input")?.addEventListener("input", (e) => {
 
 document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (forumSending) return;
+  if (forumSending || !activeForumRoomId) return;
 
   const inputEl = document.getElementById("forum-input");
   const submitBtn = document.getElementById("forum-submit-btn");
@@ -2153,7 +2537,7 @@ document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
   if (submitBtn) submitBtn.disabled = true;
 
   try {
-    const res = await authFetch("/api/forum/mensagens", {
+    const res = await authFetch(`/api/forum/salas/${activeForumRoomId}/mensagens`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conteudo }),
@@ -2168,10 +2552,26 @@ document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
     document.getElementById("forum-counter")?.classList.add("hidden");
     if (data?.message) {
       appData.forumMessages.push(data.message);
+      forumMessagesCache[activeForumRoomId] = appData.forumMessages;
+
+      const idx = (appData.forumRooms || []).findIndex(
+        (r) => Number(r.id) === Number(activeForumRoomId)
+      );
+      if (idx >= 0) {
+        appData.forumRooms[idx].mensagensCount =
+          (Number(appData.forumRooms[idx].mensagensCount) || 0) + 1;
+        appData.forumRooms[idx].ultimaMensagem = {
+          id: data.message.id,
+          conteudo: data.message.conteudo,
+          createdAt: data.message.createdAt,
+          autorNome: data.message.autor?.nome || currentUser?.nome || "Você",
+        };
+      }
+
       renderForumMessages(true);
       lucide.createIcons();
     } else {
-      await loadForumMessages(false);
+      await loadActiveForumRoom(false, true);
     }
     showToast("Mensagem publicada no fórum!");
   } catch (err) {

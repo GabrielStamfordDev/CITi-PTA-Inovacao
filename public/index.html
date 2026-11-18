@@ -101,7 +101,7 @@
     }
 
     #screen-assistente.active,
-    #screen-forum.active {
+    #screen-forum-room.active {
       overflow: hidden;
     }
 
@@ -703,7 +703,7 @@
             </div>
             <div class="mt-2">
               <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Fórum de Cuidadores</p>
-              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Converse com outros familiares</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Grupos por tema e região</p>
             </div>
           </button>
 
@@ -910,26 +910,69 @@
     </section>
 
     <!-- ==========================================
-         TELA 13: FÓRUM DE CUIDADORES (CHAT COMUNITÁRIO MVP)
+         TELA 13: DIRETÓRIO DE FÓRUNS (ESTILO TELEGRAM - VERSÃO A)
     =========================================== -->
-    <section id="screen-forum" class="screen">
-      <!-- Cabeçalho do Fórum -->
-      <div class="shrink-0 px-5 pt-4 pb-3 border-b border-purple-200/70 bg-[#f7f4ef]">
-        <div class="desktop-readable flex items-start justify-between gap-2">
+    <section id="screen-forum" class="screen px-5 pt-4 pb-6">
+      <div class="desktop-readable w-full space-y-4">
+        <div class="flex items-start justify-between gap-2 pb-3 border-b border-purple-200/70">
           <div>
             <h2 class="text-xl font-bold text-[#5b21b6] flex items-center gap-1.5">
               <i data-lucide="messages-square" class="w-5 h-5 text-emerald-700 shrink-0"></i>
-              <span>Fórum de Cuidadores</span>
+              <span>Fóruns de Cuidadores</span>
             </h2>
             <p class="text-xs text-slate-600 mt-0.5">
-              Espaço aberto para trocar experiências, dicas e acolhimento com outros familiares
+              Escolha uma comunidade para ler e trocar experiências com outros familiares
             </p>
           </div>
-          <button type="button" onclick="loadForumMessages(true)" aria-label="Atualizar mensagens do fórum" title="Atualizar conversa"
+          <button type="button" onclick="loadForumRooms(true)" aria-label="Atualizar lista de fóruns" title="Atualizar fóruns"
                   class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white hover:bg-purple-50 border border-purple-200 text-[#5b21b6] text-xs font-semibold transition min-h-[34px]">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
             <span>Atualizar</span>
           </button>
+        </div>
+
+        <div id="forum-rooms-container" class="space-y-5"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         TELA 13B: CONVERSA DA SALA DO FÓRUM
+    =========================================== -->
+    <section id="screen-forum-room" class="screen">
+      <!-- Cabeçalho da Sala -->
+      <div class="shrink-0 px-5 pt-4 pb-3 border-b border-purple-200/70 bg-[#f7f4ef]">
+        <div class="desktop-readable space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2.5 min-w-0">
+              <button type="button" onclick="openForum()" aria-label="Voltar para a lista de fóruns"
+                      class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white hover:bg-purple-50 border border-purple-200 text-[#5b21b6] text-xs font-bold transition min-h-[36px]">
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                <span>Salas</span>
+              </button>
+              <div class="min-w-0">
+                <h2 id="forum-room-title" class="text-lg font-extrabold text-[#5b21b6] leading-tight truncate">
+                  Acolhimento Geral
+                </h2>
+                <p id="forum-room-meta" class="text-[11px] font-semibold text-slate-600 mt-0.5">
+                  Carregando...
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" id="forum-room-leave-btn" onclick="leaveCurrentForumRoom()"
+                      class="hidden px-2.5 py-1.5 rounded-full bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 text-[11px] font-bold transition min-h-[34px]">
+                Sair
+              </button>
+              <button type="button" onclick="loadActiveForumRoom(true, false)" aria-label="Atualizar mensagens do fórum" title="Atualizar conversa"
+                      class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white hover:bg-purple-50 border border-purple-200 text-[#5b21b6] text-xs font-semibold transition min-h-[34px]">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">Atualizar</span>
+              </button>
+            </div>
+          </div>
+
+          <p id="forum-room-desc" class="text-xs text-slate-600 leading-relaxed"></p>
         </div>
       </div>
 
@@ -938,18 +981,29 @@
         <div id="forum-messages-list" class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-6 space-y-3.5"></div>
       </div>
 
-      <!-- Barra de envio de mensagem no Fórum -->
+      <!-- Barra de envio OU convite para entrar (leitura livre estilo Telegram) -->
       <div class="shrink-0 px-5 py-3 bg-white/95 border-t border-purple-200/70">
-        <form id="form-forum" class="desktop-readable flex items-center gap-2">
-          <input type="text" id="forum-input" maxlength="1000" autocomplete="off"
-                 placeholder="Compartilhe uma vivência, dica ou dúvida com a comunidade..."
-                 class="flex-1 min-w-0 bg-[#f3effc] border border-purple-200 focus:border-[#7353ba] rounded-full px-4 py-2.5 text-sm text-slate-800 focus:outline-none min-h-[44px]" />
-          <button type="submit" id="forum-submit-btn" aria-label="Publicar mensagem no fórum" title="Publicar no fórum"
-                  class="pill-btn-purple w-11 h-11 shrink-0 flex items-center justify-center disabled:opacity-50">
-            <i data-lucide="send" class="w-4 h-4"></i>
+        <div id="forum-composer-wrapper">
+          <form id="form-forum" class="desktop-readable flex items-center gap-2">
+            <input type="text" id="forum-input" maxlength="1000" autocomplete="off"
+                   placeholder="Compartilhe uma vivência, dica ou dúvida com a comunidade..."
+                   class="flex-1 min-w-0 bg-[#f3effc] border border-purple-200 focus:border-[#7353ba] rounded-full px-4 py-2.5 text-sm text-slate-800 focus:outline-none min-h-[44px]" />
+            <button type="submit" id="forum-submit-btn" aria-label="Publicar mensagem no fórum" title="Publicar no fórum"
+                    class="pill-btn-purple w-11 h-11 shrink-0 flex items-center justify-center disabled:opacity-50">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </form>
+          <p id="forum-counter" class="desktop-readable hidden text-right text-[11px] font-semibold text-slate-500 mt-1 pr-14" aria-live="polite"></p>
+        </div>
+
+        <div id="forum-join-bar" class="desktop-readable hidden flex flex-col items-center gap-2 text-center py-1">
+          <p class="text-xs text-slate-600">Você está visualizando as mensagens deste fórum.</p>
+          <button type="button" id="forum-join-btn" onclick="joinCurrentForumRoom()"
+                  class="pill-btn-purple w-full max-w-[340px] py-2.5 px-5 text-sm font-bold flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-60">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Entrar neste fórum para enviar mensagens</span>
           </button>
-        </form>
-        <p id="forum-counter" class="desktop-readable hidden text-right text-[11px] font-semibold text-slate-500 mt-1 pr-14" aria-live="polite"></p>
+        </div>
       </div>
     </section>
 

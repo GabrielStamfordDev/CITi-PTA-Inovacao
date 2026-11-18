@@ -23,18 +23,51 @@ model User {
   inscricoes          Inscricao[]
   passwordResetTokens PasswordResetToken[]
   forumMessages       ForumMessage[]
+  forumMemberships    ForumMembership[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
 
+model ForumRoom {
+  id          Int               @id @default(autoincrement())
+  slug        String            @unique
+  nome        String
+  descricao   String
+  categoria   String
+  icone       String            @default("messages-square")
+  cor         String            @default("emerald")
+  padrao      Boolean           @default(false)
+  ordem       Int               @default(0)
+  createdAt   DateTime          @default(now())
+  messages    ForumMessage[]
+  memberships ForumMembership[]
+
+  @@index([ordem])
+}
+
+model ForumMembership {
+  id       Int       @id @default(autoincrement())
+  userId   Int
+  roomId   Int
+  joinedAt DateTime  @default(now())
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room     ForumRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([roomId])
+}
+
 model ForumMessage {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
+  roomId    Int
   conteudo  String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room      ForumRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+  @@index([roomId, createdAt])
 }
 
 model PasswordResetToken {

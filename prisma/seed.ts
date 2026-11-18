@@ -30,6 +30,53 @@ async function seedUsers() {
       estado: "PE - Pernambuco",
     },
   });
+
+  const extraSeedUsers = [
+    {
+      email: "carlos@cuida.com",
+      nome: "Carlos Eduardo",
+      dataNascimento: "22/08/1968",
+      idade: 58,
+      pessoaComAlzheimer: "Seu Antônio",
+      parentesco: "Filho(a)",
+      estagioDaDoenca: "Inicial",
+      cidade: "Recife",
+      estado: "PE - Pernambuco",
+    },
+    {
+      email: "lucia@cuida.com",
+      nome: "Lúcia Helena",
+      dataNascimento: "10/03/1962",
+      idade: 64,
+      pessoaComAlzheimer: "Seu José",
+      parentesco: "Cônjuge",
+      estagioDaDoenca: "Avançado",
+      cidade: "Olinda",
+      estado: "PE - Pernambuco",
+    },
+    {
+      email: "ana@cuida.com",
+      nome: "Ana Paula",
+      dataNascimento: "04/11/1984",
+      idade: 42,
+      pessoaComAlzheimer: "Dona Severina",
+      parentesco: "Neto(a)",
+      estagioDaDoenca: "Moderado",
+      cidade: "Jaboatão dos Guararapes",
+      estado: "PE - Pernambuco",
+    },
+  ];
+
+  for (const u of extraSeedUsers) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        ...u,
+        senha: hashedPassword,
+      },
+    });
+  }
 }
 
 async function seedEventos() {
@@ -275,29 +322,181 @@ async function seedFaqs() {
   }
 }
 
-async function seedForumMessages() {
-  await seedUsers();
-  const maria = await prisma.user.findUnique({
-    where: { email: "maria@cuida.com" },
-  });
-  if (!maria) return;
-
-  const videoUrl = "https://www.youtube.com/watch?v=xXHZxtv08qY";
+async function ensureForumMessage(
+  roomId: number,
+  userId: number,
+  uniqueSubstring: string,
+  conteudo: string
+) {
   const existing = await prisma.forumMessage.findFirst({
     where: {
-      userId: maria.id,
-      conteudo: { contains: "xXHZxtv08qY" },
+      roomId,
+      userId,
+      conteudo: { contains: uniqueSubstring },
     },
   });
-
   if (!existing) {
     await prisma.forumMessage.create({
-      data: {
-        userId: maria.id,
-        conteudo:
-          `Olá, pessoal! Aqui em casa minha mãe (Dona Tereza) teve uma fase difícil de perambulação, querendo caminhar pela casa sem parar e sair para a rua no fim da tarde. Encontrei este vídeo explicando como lidar com a perambulação com segurança e acolhimento e me ajudou demais: ${videoUrl} — espero que ajude vocês também!`,
-      },
+      data: { roomId, userId, conteudo },
     });
+  }
+}
+
+async function seedForumRoomsAndMessages() {
+  await seedUsers();
+
+  const roomsSpec = [
+    {
+      slug: "acolhimento-geral",
+      nome: "Acolhimento Geral",
+      descricao: "Espaço principal para boas-vindas, trocas diárias e apoio entre todos os cuidadores.",
+      categoria: "Geral",
+      icone: "heart-handshake",
+      cor: "purple",
+      padrao: true,
+      ordem: 1,
+    },
+    {
+      slug: "perambulacao-e-rotina",
+      nome: "Perambulação e Rotina",
+      descricao: "Dicas práticas para agitação no fim da tarde, sono, banho e segurança em casa.",
+      categoria: "Manejo diário",
+      icone: "footprints",
+      cor: "amber",
+      padrao: false,
+      ordem: 2,
+    },
+    {
+      slug: "cuidadores-pernambuco",
+      nome: "Cuidadores de Pernambuco",
+      descricao: "Rede local de Recife, Olinda e região para trocar dicas de encontros da ABRAz-PE e serviços do SUS.",
+      categoria: "Regional",
+      icone: "map-pin",
+      cor: "emerald",
+      padrao: false,
+      ordem: 3,
+    },
+    {
+      slug: "saude-mental-cuidador",
+      nome: "Saúde Mental do Cuidador",
+      descricao: "Um lugar seguro para desabafar sobre cansaço, culpa e formas reais de dividir o cuidado.",
+      categoria: "Bem-estar",
+      icone: "sun",
+      cor: "rose",
+      padrao: false,
+      ordem: 4,
+    },
+  ];
+
+  const roomsBySlug = new Map<string, { id: number }>();
+  for (const roomData of roomsSpec) {
+    const room = await prisma.forumRoom.upsert({
+      where: { slug: roomData.slug },
+      update: {
+        nome: roomData.nome,
+        descricao: roomData.descricao,
+        categoria: roomData.categoria,
+        icone: roomData.icone,
+        cor: roomData.cor,
+        padrao: roomData.padrao,
+        ordem: roomData.ordem,
+      },
+      create: roomData,
+    });
+    roomsBySlug.set(roomData.slug, room);
+  }
+
+  const allUsers = await prisma.user.findMany({ select: { id: true, email: true } });
+  const userByEmail = new Map(allUsers.map((u) => [u.email, u.id]));
+
+  const geralRoom = roomsBySlug.get("acolhimento-geral")!;
+  const perambRoom = roomsBySlug.get("perambulacao-e-rotina")!;
+  const peRoom = roomsBySlug.get("cuidadores-pernambuco")!;
+  const mentalRoom = roomsBySlug.get("saude-mental-cuidador")!;
+
+  // Todos os usuários existentes participam automaticamente de Acolhimento Geral
+  for (const u of allUsers) {
+    await prisma.forumMembership.upsert({
+      where: { userId_roomId: { userId: u.id, roomId: geralRoom.id } },
+      update: {},
+      create: { userId: u.id, roomId: geralRoom.id },
+    });
+  }
+
+  const mariaId = userByEmail.get("maria@cuida.com");
+  const carlosId = userByEmail.get("carlos@cuida.com");
+  const luciaId = userByEmail.get("lucia@cuida.com");
+  const anaId = userByEmail.get("ana@cuida.com");
+
+  const extraMemberships: Array<[number | undefined, number]> = [
+    [mariaId, perambRoom.id],
+    [carlosId, perambRoom.id],
+    [anaId, perambRoom.id],
+    [mariaId, peRoom.id],
+    [luciaId, peRoom.id],
+    [anaId, peRoom.id],
+    [luciaId, mentalRoom.id],
+    [carlosId, mentalRoom.id],
+  ];
+
+  for (const [uid, rid] of extraMemberships) {
+    if (!uid) continue;
+    await prisma.forumMembership.upsert({
+      where: { userId_roomId: { userId: uid, roomId: rid } },
+      update: {},
+      create: { userId: uid, roomId: rid },
+    });
+  }
+
+  // Preservar ou criar a mensagem da Maria Silva em Acolhimento Geral com o link do YouTube
+  if (mariaId) {
+    const videoUrl = "https://www.youtube.com/watch?v=xXHZxtv08qY";
+    await ensureForumMessage(
+      geralRoom.id,
+      mariaId,
+      "xXHZxtv08qY",
+      `Olá, pessoal! Aqui em casa minha mãe (Dona Tereza) teve uma fase difícil de perambulação, querendo caminhar pela casa sem parar e sair para a rua no fim da tarde. Encontrei este vídeo explicando como lidar com a perambulação com segurança e acolhimento e me ajudou demais: ${videoUrl} — espero que ajude vocês também!`
+    );
+
+    await ensureForumMessage(
+      perambRoom.id,
+      mariaId,
+      "sino discreto na porta",
+      "Uma dica simples que funcionou muito aqui com Dona Tereza foi colocar um sino discreto na porta de entrada e adaptar a iluminação antes do anoitecer para reduzir a agitação."
+    );
+  }
+
+  if (carlosId) {
+    await ensureForumMessage(
+      perambRoom.id,
+      carlosId,
+      "Síndrome do Pôr do Sol",
+      "Com meu pai (Seu Antônio), diminuir o barulho da TV por volta das 17h e colocar uma música calma da juventude dele reduziu bastante os episódios da Síndrome do Pôr do Sol."
+    );
+  }
+
+  if (luciaId) {
+    await ensureForumMessage(
+      peRoom.id,
+      luciaId,
+      "encontros presenciais da ABRAz-PE",
+      "Alguém de Recife ou Olinda já foi nos encontros presenciais da ABRAz-PE? Fui mês passado e saí muito mais acolhida ao conversar com outras famílias daqui."
+    );
+    await ensureForumMessage(
+      mentalRoom.id,
+      luciaId,
+      "2 horas na semana para descansar",
+      "Confesso que antes eu sentia muita culpa quando pedia ajuda. Hoje combino com minha sobrinha para eu ter pelo menos 2 horas na semana para descansar e resolver minhas coisas."
+    );
+  }
+
+  if (anaId) {
+    await ensureForumMessage(
+      peRoom.id,
+      anaId,
+      "Farmácia de Pernambuco",
+      "Bom dia! Aqui em Jaboatão conseguimos a medicação gratuita da minha avó pelo SUS dando entrada na Farmácia de Pernambuco com o laudo do neurologista. Se alguém precisar do passo a passo, posso explicar!"
+    );
   }
 }
 
@@ -305,13 +504,14 @@ async function main() {
   const forceSeed = process.argv.includes("--force");
 
   if (!forceSeed) {
-    const [usersCount, eventosCount, linksCount, artigosCount, faqsCount, forumCount] =
+    const [usersCount, eventosCount, linksCount, artigosCount, faqsCount, forumRoomsCount, forumCount] =
       await Promise.all([
         prisma.user.count(),
         prisma.evento.count(),
         prisma.linkApoio.count(),
         prisma.artigo.count(),
         prisma.faq.count(),
+        prisma.forumRoom.count(),
         prisma.forumMessage.count(),
       ]);
 
@@ -321,6 +521,7 @@ async function main() {
       linksCount > 0 &&
       artigosCount > 0 &&
       faqsCount > 0 &&
+      forumRoomsCount >= 4 &&
       forumCount > 0
     ) {
       console.log("Banco já populado — seed idempotente ignorado (use --force para sincronizar).");
@@ -333,10 +534,10 @@ async function main() {
       linksCount > 0 &&
       artigosCount > 0 &&
       faqsCount > 0 &&
-      forumCount === 0
+      (forumRoomsCount < 4 || forumCount === 0)
     ) {
-      await seedForumMessages();
-      console.log("Mensagem inicial do Fórum (Maria Silva) populada com sucesso!");
+      await seedForumRoomsAndMessages();
+      console.log("Salas do Fórum e mensagens iniciais populadas com sucesso!");
       return;
     }
   }
@@ -346,7 +547,7 @@ async function main() {
   await seedLinksApoio();
   await seedArtigos();
   await seedFaqs();
-  await seedForumMessages();
+  await seedForumRoomsAndMessages();
   console.log("Seed do CuiDA executado com sucesso!");
 }
 

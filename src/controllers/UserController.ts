@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import * as UserRepository from "../repositories/UserRepository";
+import * as AppRepository from "../repositories/AppRepository";
 import { sendPasswordResetEmail } from "../services/MailService";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import {
@@ -150,6 +151,12 @@ export const register = async (req: Request, res: Response) => {
       cidade: sanitizeOptionalString(cidade),
       estado: sanitizeOptionalString(estado),
     });
+
+    try {
+      await AppRepository.ensureUserInDefaultForumRooms(user.id);
+    } catch (forumErr) {
+      console.warn("Não foi possível inscrever usuário na sala padrão do fórum:", forumErr);
+    }
 
     const token = attachAuthSession(res, user.id, user.email);
     return res.status(201).json({ ...user, token });

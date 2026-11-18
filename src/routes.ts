@@ -45,6 +45,15 @@ routes.post(
   assistantHourlyLimiter,
   AppController.askAssistant
 );
+routes.get("/api/forum/salas", optionalAuth, AppController.getForumRooms);
+routes.post("/api/forum/salas/:id/participar", requireAuth, AppController.toggleForumRoomMembership);
+routes.get("/api/forum/salas/:id/mensagens", optionalAuth, AppController.getForumRoomMessages);
+routes.post(
+  "/api/forum/salas/:id/mensagens",
+  requireAuth,
+  forumPostLimiter,
+  AppController.createForumRoomMessage
+);
 routes.get("/api/forum/mensagens", optionalAuth, AppController.getForumMessages);
 routes.post(
   "/api/forum/mensagens",
