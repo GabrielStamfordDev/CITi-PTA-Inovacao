@@ -22,8 +22,19 @@ model User {
   estado              String?
   inscricoes          Inscricao[]
   passwordResetTokens PasswordResetToken[]
+  forumMessages       ForumMessage[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+}
+
+model ForumMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  conteudo  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
 }
 
 model PasswordResetToken {

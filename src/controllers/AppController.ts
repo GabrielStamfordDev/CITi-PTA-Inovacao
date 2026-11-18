@@ -13,14 +13,15 @@ export const getInitialData = async (req: AuthenticatedRequest, res: Response) =
         .json({ message: "Acesso negado: parâmetro userId não corresponde ao usuário autenticado." });
     }
 
-    const [eventos, links, artigos, faqs] = await Promise.all([
+    const [eventos, links, artigos, faqs, forumMessages] = await Promise.all([
       AppRepository.findAllEventos(authUserId),
       AppRepository.findAllLinks(),
       AppRepository.findAllArtigos(),
       AppRepository.findAllFaqs(),
+      AppRepository.findAllForumMessages(),
     ]);
 
-    return res.status(200).json({ eventos, links, artigos, faqs });
+    return res.status(200).json({ eventos, links, artigos, faqs, forumMessages });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao carregar dados do aplicativo." });
@@ -127,5 +128,54 @@ export const askAssistant = async (req: AuthenticatedRequest, res: Response) => 
     return res
       .status(500)
       .json({ message: "Não foi possível gerar a resposta agora. Tente novamente em instantes." });
+  }
+};
+
+export const getForumMessages = async (_req: Request, res: Response) => {
+  try {
+    const messages = await AppRepository.findAllForumMessages();
+    return res.status(200).json({ messages });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao carregar mensagens do fórum." });
+  }
+};
+
+export const createForumMessage = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.authUserId;
+    if (!userId || !Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: "Sessão não autenticada. Faça login novamente." });
+    }
+
+    if (
+      req.body?.userId !== undefined &&
+      req.body?.userId !== null &&
+      Number(req.body.userId) !== userId
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Acesso negado: você só pode publicar mensagens com a sua própria conta." });
+    }
+
+    const conteudo = String(req.body?.conteudo || "").trim();
+    if (!conteudo) {
+      return res.status(400).json({ message: "Escreva uma mensagem antes de enviar." });
+    }
+    if (conteudo.length > 1200) {
+      return res
+        .status(400)
+        .json({ message: "Sua mensagem ficou muito longa (máximo de 1200 caracteres)." });
+    }
+
+    const result = await AppRepository.createForumMessage(userId, conteudo);
+    if ("error" in result) {
+      return res.status(result.status).json({ message: result.error });
+    }
+
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao publicar mensagem no fórum." });
   }
 };

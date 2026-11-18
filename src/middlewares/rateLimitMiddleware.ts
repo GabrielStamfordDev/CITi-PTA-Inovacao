@@ -126,3 +126,12 @@ export const authAttemptLimiter = createRateLimiter({
   message:
     "Muitas tentativas de acesso ou cadastro seguidas. Aguarde alguns minutos e tente novamente.",
 });
+
+export const forumPostLimiter = createRateLimiter({
+  name: "forum-post",
+  windowMs: 60 * 1000,
+  maxRequests: Number(process.env.RATE_LIMIT_FORUM_PER_MIN || 15),
+  keyGenerator: (req) => `${extractClientIp(req)}:u:${req.authUserId || "anon"}`,
+  message:
+    "Você enviou muitas mensagens em pouco tempo no fórum. Aguarde um minuto antes de publicar novamente.",
+});

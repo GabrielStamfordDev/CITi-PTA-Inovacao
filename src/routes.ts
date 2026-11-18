@@ -8,6 +8,7 @@ import {
   authAttemptLimiter,
   emailRecoveryIpLimiter,
   emailRecoveryTargetLimiter,
+  forumPostLimiter,
   recoveryConfirmLimiter,
 } from "./middlewares/rateLimitMiddleware";
 
@@ -43,6 +44,13 @@ routes.post(
   assistantMinuteLimiter,
   assistantHourlyLimiter,
   AppController.askAssistant
+);
+routes.get("/api/forum/mensagens", optionalAuth, AppController.getForumMessages);
+routes.post(
+  "/api/forum/mensagens",
+  requireAuth,
+  forumPostLimiter,
+  AppController.createForumMessage
 );
 
 export default routes;

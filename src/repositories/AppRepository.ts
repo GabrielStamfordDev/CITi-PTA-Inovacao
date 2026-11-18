@@ -74,3 +74,89 @@ export const findAllArtigos = async () => {
 export const findAllFaqs = async () => {
   return await prisma.faq.findMany({ orderBy: { ordem: "asc" } });
 };
+
+export const findAllForumMessages = async (limit = 100) => {
+  const messages = await prisma.forumMessage.findMany({
+    orderBy: { createdAt: "asc" },
+    take: limit,
+    include: {
+      user: {
+        select: {
+          id: true,
+          nome: true,
+          pessoaComAlzheimer: true,
+          parentesco: true,
+          estagioDaDoenca: true,
+          cidade: true,
+          estado: true,
+        },
+      },
+    },
+  });
+
+  return messages.map((m) => ({
+    id: m.id,
+    userId: m.userId,
+    conteudo: m.conteudo,
+    createdAt: m.createdAt.toISOString(),
+    autor: {
+      id: m.user.id,
+      nome: m.user.nome,
+      pessoaComAlzheimer: m.user.pessoaComAlzheimer,
+      parentesco: m.user.parentesco,
+      estagioDaDoenca: m.user.estagioDaDoenca,
+      cidade: m.user.cidade,
+      estado: m.user.estado,
+    },
+  }));
+};
+
+export const createForumMessage = async (userId: number, conteudo: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    return { status: 404, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const created = await prisma.forumMessage.create({
+    data: {
+      userId,
+      conteudo,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          nome: true,
+          pessoaComAlzheimer: true,
+          parentesco: true,
+          estagioDaDoenca: true,
+          cidade: true,
+          estado: true,
+        },
+      },
+    },
+  });
+
+  return {
+    message: {
+      id: created.id,
+      userId: created.userId,
+      conteudo: created.conteudo,
+      createdAt: created.createdAt.toISOString(),
+      autor: {
+        id: created.user.id,
+        nome: created.user.nome,
+        pessoaComAlzheimer: created.user.pessoaComAlzheimer,
+        parentesco: created.user.parentesco,
+        estagioDaDoenca: created.user.estagioDaDoenca,
+        cidade: created.user.cidade,
+        estado: created.user.estado,
+      },
+    },
+  };
+};
+

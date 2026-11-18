@@ -9,7 +9,14 @@ async function seedUsers() {
 
   await prisma.user.upsert({
     where: { email: "maria@cuida.com" },
-    update: {},
+    update: {
+      nome: "Maria Silva",
+      pessoaComAlzheimer: "Dona Tereza",
+      parentesco: "Filho(a)",
+      estagioDaDoenca: "Moderado",
+      cidade: "Recife",
+      estado: "PE - Pernambuco",
+    },
     create: {
       nome: "Maria Silva",
       email: "maria@cuida.com",
@@ -268,20 +275,68 @@ async function seedFaqs() {
   }
 }
 
+async function seedForumMessages() {
+  await seedUsers();
+  const maria = await prisma.user.findUnique({
+    where: { email: "maria@cuida.com" },
+  });
+  if (!maria) return;
+
+  const videoUrl = "https://www.youtube.com/watch?v=xXHZxtv08qY";
+  const existing = await prisma.forumMessage.findFirst({
+    where: {
+      userId: maria.id,
+      conteudo: { contains: "xXHZxtv08qY" },
+    },
+  });
+
+  if (!existing) {
+    await prisma.forumMessage.create({
+      data: {
+        userId: maria.id,
+        conteudo:
+          `Olá, pessoal! Aqui em casa minha mãe (Dona Tereza) teve uma fase difícil de perambulação, querendo caminhar pela casa sem parar e sair para a rua no fim da tarde. Encontrei este vídeo explicando como lidar com a perambulação com segurança e acolhimento e me ajudou demais: ${videoUrl} — espero que ajude vocês também!`,
+      },
+    });
+  }
+}
+
 async function main() {
   const forceSeed = process.argv.includes("--force");
 
   if (!forceSeed) {
-    const [usersCount, eventosCount, linksCount, artigosCount, faqsCount] = await Promise.all([
-      prisma.user.count(),
-      prisma.evento.count(),
-      prisma.linkApoio.count(),
-      prisma.artigo.count(),
-      prisma.faq.count(),
-    ]);
+    const [usersCount, eventosCount, linksCount, artigosCount, faqsCount, forumCount] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.evento.count(),
+        prisma.linkApoio.count(),
+        prisma.artigo.count(),
+        prisma.faq.count(),
+        prisma.forumMessage.count(),
+      ]);
 
-    if (usersCount > 0 && eventosCount > 0 && linksCount > 0 && artigosCount > 0 && faqsCount > 0) {
+    if (
+      usersCount > 0 &&
+      eventosCount > 0 &&
+      linksCount > 0 &&
+      artigosCount > 0 &&
+      faqsCount > 0 &&
+      forumCount > 0
+    ) {
       console.log("Banco já populado — seed idempotente ignorado (use --force para sincronizar).");
+      return;
+    }
+
+    if (
+      usersCount > 0 &&
+      eventosCount > 0 &&
+      linksCount > 0 &&
+      artigosCount > 0 &&
+      faqsCount > 0 &&
+      forumCount === 0
+    ) {
+      await seedForumMessages();
+      console.log("Mensagem inicial do Fórum (Maria Silva) populada com sucesso!");
       return;
     }
   }
@@ -291,6 +346,7 @@ async function main() {
   await seedLinksApoio();
   await seedArtigos();
   await seedFaqs();
+  await seedForumMessages();
   console.log("Seed do CuiDA executado com sucesso!");
 }
 

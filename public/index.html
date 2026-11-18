@@ -85,19 +85,13 @@
       }
 
       body.desktop-mode #home-actions {
-        max-width: 540px;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: 720px;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         gap: 14px;
       }
 
       body.desktop-mode #home-actions > * {
         margin-top: 0 !important;
-      }
-
-      body.desktop-mode #home-assistant-btn,
-      body.desktop-mode #home-profile-btn {
-        grid-column: span 2 / span 2;
       }
 
       body.desktop-mode #assistant-quick-chips {
@@ -106,7 +100,8 @@
       }
     }
 
-    #screen-assistente.active {
+    #screen-assistente.active,
+    #screen-forum.active {
       overflow: hidden;
     }
 
@@ -571,55 +566,181 @@
     </section>
 
     <!-- ==========================================
-         TELA 5: HOME / PÁGINA INICIAL (Frame 00:04)
-         Exatamente como o protótipo: CuiDA maior próximo ao topo e
-         apenas a parte inferior das duas circunferências aparecendo
+         TELA 5: HOME / PÁGINA INICIAL (ESTILO ELDORA / ACOLHEDORA)
     =========================================== -->
-    <section id="screen-home" class="screen p-0">
-      <div class="relative w-full h-[156px] shrink-0 overflow-hidden">
-        <svg viewBox="0 0 412 156" preserveAspectRatio="none" class="w-full h-full">
-          <!-- Circunferência externa roxa (não concêntrica, aparecendo só a parte inferior) -->
-          <circle cx="220" cy="-210" r="365" fill="#6f2dbd" />
-          <!-- Circunferência interna clara (não concêntrica, aparecendo só a parte inferior) -->
-          <circle cx="192" cy="-205" r="340" fill="#f7f4ef" />
-        </svg>
-        <div class="absolute inset-x-0 top-6 flex justify-center pointer-events-none">
-          <span class="font-brand text-[42px] font-black text-[#5b21b6] tracking-tight leading-none">CuiDA</span>
+    <section id="screen-home" class="screen px-5 pt-4 pb-6">
+      <div class="desktop-readable w-full">
+        <!-- Topo da marca com saída rápida -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="inline-flex items-center gap-1.5">
+            <span class="w-8 h-8 rounded-xl bg-purple-100 border border-purple-200 flex items-center justify-center text-[#5b21b6]">
+              <i data-lucide="heart-handshake" class="w-4 h-4"></i>
+            </span>
+            <h1 class="font-brand text-2xl font-extrabold text-[#5b21b6] tracking-tight">CuiDA</h1>
+          </div>
+          <button type="button" onclick="logout()" aria-label="Sair da conta" title="Sair da conta"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 hover:bg-red-50 border border-slate-200 hover:border-red-200 text-xs font-semibold text-slate-600 hover:text-red-600 transition">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span>Sair</span>
+          </button>
         </div>
-      </div>
 
-      <!-- Saudação e Botões Pílula Centralizados -->
-      <div class="px-8 pt-4 pb-6 flex-1 flex flex-col items-center">
-        <p id="home-greeting" class="text-center text-slate-600 text-[15px] mb-5 max-w-[260px] leading-relaxed">
-          Olá, [nome], como posso te ajudar hoje?
-        </p>
+        <!-- Banner de boas-vindas com mensagem acolhedora + ilustração do cuidado -->
+        <div class="flex items-center justify-between gap-3 pt-1 pb-3">
+          <div class="min-w-0 flex-1">
+            <p id="home-period-greeting" class="text-sm font-semibold text-slate-600">Olá,</p>
+            <h2 id="home-greeting" class="font-brand text-2xl font-black text-slate-900 leading-tight mt-0.5">
+              Cuidador(a) 👋
+            </h2>
+            <p id="home-subtitle-care" class="text-xs font-medium text-slate-600 mt-1.5 leading-relaxed">
+              Como está sendo o cuidado hoje?
+            </p>
+          </div>
 
-        <div id="home-actions" class="w-full max-w-[255px] space-y-3">
-          <button type="button" id="home-assistant-btn" onclick="openAssistant()"
-                  class="pill-btn-purple w-full py-3.5 px-4 text-sm font-semibold flex items-center justify-center gap-2">
-            <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
-            <span>Assistente CuiDA (IA)</span>
+          <!-- Ilustração vetorial acolhedora (Idoso e Cuidadora / Família) -->
+          <div class="shrink-0 w-28 h-24 relative flex items-center justify-center" aria-hidden="true">
+            <svg viewBox="0 0 150 125" class="w-full h-full drop-shadow-sm" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="80" cy="66" r="48" fill="#EDE9FE" />
+              <path d="M126 88C135 80 140 67 138 56C130 61 124 72 123 84" fill="#A7F3D0" />
+              <path d="M130 98C140 93 145 83 145 73C137 76 131 85 128 95" fill="#6EE7B7" />
+              <path d="M26 90C18 82 14 70 16 59C23 64 29 74 30 85" fill="#DDD6FE" />
+              <path d="M30 116C30 96 42 86 58 86C74 86 86 96 86 116H30Z" fill="#5B21B6" />
+              <path d="M51 86L58 97L65 86H51Z" fill="#DDD6FE" />
+              <circle cx="58" cy="58" r="18" fill="#FBBF24" fill-opacity="0.35" />
+              <path d="M39 56C39 44 47 37 58 37C69 37 77 44 77 56C74 49 67 45 58 45C49 45 42 49 39 56Z" fill="#E2E8F0" />
+              <circle cx="58" cy="60" r="15" fill="#FDE68A" />
+              <circle cx="52.5" cy="59" r="4" stroke="#475569" stroke-width="1.6" fill="#FFFFFF" fill-opacity="0.5" />
+              <circle cx="63.5" cy="59" r="4" stroke="#475569" stroke-width="1.6" fill="#FFFFFF" fill-opacity="0.5" />
+              <line x1="56.5" y1="59" x2="59.5" y2="59" stroke="#475569" stroke-width="1.6" />
+              <path d="M53.5 66.5C55 68.5 61 68.5 62.5 66.5" stroke="#78350F" stroke-width="1.7" stroke-linecap="round" />
+              <path d="M74 116C74 98 85 89 100 89C115 89 126 98 126 116H74Z" fill="#F59E0B" />
+              <path d="M93 89L100 99L107 89H93Z" fill="#FEF3C7" />
+              <circle cx="109" cy="48" r="8" fill="#CBD5E1" />
+              <circle cx="100" cy="63" r="14.5" fill="#FDE68A" />
+              <path d="M84 61C84 49 91 43 101 43C111 43 116 50 116 61C113 54 107 51 100 51C93 51 87 54 84 61Z" fill="#E2E8F0" />
+              <circle cx="95" cy="62" r="1.5" fill="#78350F" />
+              <circle cx="105" cy="62" r="1.5" fill="#78350F" />
+              <path d="M95.5 68.5C97.5 70.5 102.5 70.5 104.5 68.5" stroke="#78350F" stroke-width="1.7" stroke-linecap="round" />
+              <path d="M79 34C77.2 31.8 73.8 31.8 72 34C70.2 36.2 70.6 39.4 73 41.5L79 47L85 41.5C87.4 39.4 87.8 36.2 86 34C84.2 31.8 80.8 31.8 79 34Z" fill="#C084FC" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Card em destaque: Apresentação da Assistente de IA CuiDA -->
+        <div id="home-assistant-btn"
+             onclick="openAssistant()"
+             role="button"
+             tabindex="0"
+             onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); openAssistant(); }"
+             class="cursor-pointer rounded-2xl bg-gradient-to-r from-[#ede9fe] via-[#f3effc] to-[#fef3c7]/70 border-2 border-[#7353ba]/35 p-4 shadow-sm hover:shadow-md hover:border-[#7353ba] transition flex items-center justify-between gap-3.5 mb-5">
+          <div class="min-w-0 flex-1">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#5b21b6]/10 text-[#5b21b6] text-[11px] font-bold mb-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>Inteligência Artificial Científica</span>
+            </div>
+            <h3 class="font-brand text-lg font-extrabold text-[#4c1d95] leading-snug">
+              Assistente CuiDA (IA)
+            </h3>
+            <p class="text-xs text-slate-700 mt-0.5 leading-relaxed">
+              Tire dúvidas rápidas sobre o cuidado diário com base em manuais oficiais.
+            </p>
+            <span class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#5b21b6] hover:bg-[#4c1d95] text-white text-xs font-bold shadow-sm transition">
+              <i data-lucide="message-circle-heart" class="w-3.5 h-3.5"></i>
+              <span>Conversar agora</span>
+            </span>
+          </div>
+
+          <div class="shrink-0 w-20 h-20 rounded-full bg-white/85 border-4 border-purple-200/80 shadow-inner flex items-center justify-center relative" aria-hidden="true">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#7353ba] to-[#5b21b6] text-white flex items-center justify-center shadow">
+              <i data-lucide="bot" class="w-7 h-7"></i>
+            </div>
+            <span class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-amber-300 border-2 border-white flex items-center justify-center text-[#5b21b6] shadow-sm">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            </span>
+          </div>
+        </div>
+
+        <!-- Seção: O que você gostaria de fazer? (Grade de cards ilustrados) -->
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="font-brand text-base font-extrabold text-slate-800">
+            O que você gostaria de fazer?
+          </h3>
+        </div>
+
+        <div id="home-actions" class="grid grid-cols-2 gap-3 w-full">
+          <!-- Card 1: Sobre Alzheimer -->
+          <button type="button" onclick="navigate('screen-artigos')"
+                  class="group bg-white/95 hover:bg-purple-50/70 border border-purple-200/70 hover:border-[#7353ba] rounded-2xl p-3.5 text-center shadow-sm hover:shadow transition flex flex-col items-center justify-between min-h-[126px]">
+            <div class="w-12 h-12 rounded-2xl bg-purple-100/90 border border-purple-200 flex items-center justify-center text-[#5b21b6] group-hover:scale-105 transition">
+              <i data-lucide="book-open-check" class="w-6 h-6"></i>
+            </div>
+            <div class="mt-2">
+              <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Sobre Alzheimer</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Guias práticos do dia a dia</p>
+            </div>
           </button>
 
-          <button type="button" onclick="navigate('screen-eventos')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
-            Eventos e Encontros
+          <!-- Card 2: Eventos e Encontros -->
+          <button type="button" onclick="navigate('screen-eventos')"
+                  class="group bg-white/95 hover:bg-amber-50/70 border border-amber-200/80 hover:border-amber-500 rounded-2xl p-3.5 text-center shadow-sm hover:shadow transition flex flex-col items-center justify-between min-h-[126px]">
+            <div class="w-12 h-12 rounded-2xl bg-amber-100/90 border border-amber-200 flex items-center justify-center text-amber-700 group-hover:scale-105 transition">
+              <i data-lucide="calendar-heart" class="w-6 h-6"></i>
+            </div>
+            <div class="mt-2">
+              <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Eventos e Encontros</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Oficinas, lives e simpósios</p>
+            </div>
           </button>
 
-          <button type="button" onclick="navigate('screen-links')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
-            Links de Apoio
+          <!-- Card 3: Fórum de Cuidadores -->
+          <button type="button" id="home-forum-btn" onclick="openForum()"
+                  class="group bg-white/95 hover:bg-emerald-50/70 border border-emerald-200/90 hover:border-emerald-600 rounded-2xl p-3.5 text-center shadow-sm hover:shadow transition flex flex-col items-center justify-between min-h-[126px] relative">
+            <span class="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wide">
+              Comunidade
+            </span>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-100/90 border border-emerald-200 flex items-center justify-center text-emerald-700 group-hover:scale-105 transition">
+              <i data-lucide="messages-square" class="w-6 h-6"></i>
+            </div>
+            <div class="mt-2">
+              <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Fórum de Cuidadores</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Converse com outros familiares</p>
+            </div>
           </button>
 
-          <button type="button" onclick="navigate('screen-artigos')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
-            Sobre Alzheimer
+          <!-- Card 4: Links de Apoio -->
+          <button type="button" onclick="navigate('screen-links')"
+                  class="group bg-white/95 hover:bg-rose-50/70 border border-rose-200/80 hover:border-rose-500 rounded-2xl p-3.5 text-center shadow-sm hover:shadow transition flex flex-col items-center justify-between min-h-[126px]">
+            <div class="w-12 h-12 rounded-2xl bg-rose-100/90 border border-rose-200 flex items-center justify-center text-rose-700 group-hover:scale-105 transition">
+              <i data-lucide="hand-heart" class="w-6 h-6"></i>
+            </div>
+            <div class="mt-2">
+              <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Links de Apoio</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">ABRAz-PE, grupos e redes</p>
+            </div>
           </button>
 
-          <button type="button" onclick="navigate('screen-faq')" class="pill-btn-white w-full py-3.5 text-sm font-medium text-slate-800 text-center">
-            Perguntas Frequentes
+          <!-- Card 5: Perguntas Frequentes -->
+          <button type="button" onclick="navigate('screen-faq')"
+                  class="group bg-white/95 hover:bg-sky-50/70 border border-sky-200/80 hover:border-sky-500 rounded-2xl p-3.5 text-center shadow-sm hover:shadow transition flex flex-col items-center justify-between min-h-[126px]">
+            <div class="w-12 h-12 rounded-2xl bg-sky-100/90 border border-sky-200 flex items-center justify-center text-sky-700 group-hover:scale-105 transition">
+              <i data-lucide="help-circle" class="w-6 h-6"></i>
+            </div>
+            <div class="mt-2">
+              <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Dúvidas Frequentes</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Respostas rápidas e diretas</p>
+            </div>
           </button>
 
-          <button type="button" id="home-profile-btn" onclick="openProfile()" class="pill-btn-white w-full py-3 text-sm font-semibold text-[#5b21b6] border-purple-200 flex items-center justify-center gap-2">
-            <i data-lucide="user-round" class="w-4 h-4"></i>
-            Meu Perfil
+          <!-- Card 6: Meu Perfil -->
+          <button type="button" id="home-profile-btn" onclick="openProfile()"
+                  class="group bg-white/95 hover:bg-purple-50/70 border border-purple-200/70 hover:border-[#7353ba] rounded-2xl p-3.5 text-center shadow-sm hover:shadow transition flex flex-col items-center justify-between min-h-[126px]">
+            <div class="w-12 h-12 rounded-2xl bg-purple-100/90 border border-purple-200 flex items-center justify-center text-[#5b21b6] group-hover:scale-105 transition">
+              <i data-lucide="user-round-cog" class="w-6 h-6"></i>
+            </div>
+            <div class="mt-2">
+              <p class="font-brand text-sm font-extrabold text-slate-800 leading-tight">Meu Perfil</p>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">Seus dados e familiar cuidado</p>
+            </div>
           </button>
         </div>
       </div>
@@ -718,16 +839,7 @@
                 Orientações práticas com base científica no seu contexto
               </p>
             </div>
-            <button type="button" id="assistant-sources-toggle" onclick="toggleAssistantSourcesPanel()"
-                    aria-expanded="false"
-                    class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-100 hover:bg-purple-200/80 text-[#5b21b6] text-xs font-semibold transition min-h-[34px]">
-              <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
-              <span id="assistant-sources-badge">Acervo científico</span>
-            </button>
           </div>
-
-          <!-- Painel expansível listando todos os PDFs do acervo -->
-          <div id="assistant-sources-panel" class="hidden mt-2.5 p-3 rounded-xl bg-white border border-purple-200 shadow-sm max-h-48 overflow-y-auto space-y-1.5"></div>
 
           <!-- Atalhos rápidos para momentos de dúvida ou crise -->
           <div id="assistant-quick-chips" class="quick-chips-strip flex gap-1.5 overflow-x-auto pt-2.5 pb-1">
@@ -798,17 +910,78 @@
     </section>
 
     <!-- ==========================================
-         BARRA INFERIOR COM HIERARQUIA CLARA E ÍCONES
-         (Elimina ambiguidade entre Voltar e Página Inicial)
+         TELA 13: FÓRUM DE CUIDADORES (CHAT COMUNITÁRIO MVP)
     =========================================== -->
-    <nav id="bottom-nav" class="hidden shrink-0 bg-[#f7f4ef]/95 border-t border-purple-200/70 px-6 py-3.5 flex justify-between items-center gap-3 z-30">
-      <button type="button" onclick="goBack()" aria-label="Voltar para a tela anterior" class="pill-btn-white px-5 py-2.5 text-sm font-medium text-slate-700 flex items-center gap-1.5 min-h-[44px]">
+    <section id="screen-forum" class="screen">
+      <!-- Cabeçalho do Fórum -->
+      <div class="shrink-0 px-5 pt-4 pb-3 border-b border-purple-200/70 bg-[#f7f4ef]">
+        <div class="desktop-readable flex items-start justify-between gap-2">
+          <div>
+            <h2 class="text-xl font-bold text-[#5b21b6] flex items-center gap-1.5">
+              <i data-lucide="messages-square" class="w-5 h-5 text-emerald-700 shrink-0"></i>
+              <span>Fórum de Cuidadores</span>
+            </h2>
+            <p class="text-xs text-slate-600 mt-0.5">
+              Espaço aberto para trocar experiências, dicas e acolhimento com outros familiares
+            </p>
+          </div>
+          <button type="button" onclick="loadForumMessages(true)" aria-label="Atualizar mensagens do fórum" title="Atualizar conversa"
+                  class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white hover:bg-purple-50 border border-purple-200 text-[#5b21b6] text-xs font-semibold transition min-h-[34px]">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Atualizar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de mensagens do fórum -->
+      <div class="relative flex-1 min-h-0 flex flex-col">
+        <div id="forum-messages-list" class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-6 space-y-3.5"></div>
+      </div>
+
+      <!-- Barra de envio de mensagem no Fórum -->
+      <div class="shrink-0 px-5 py-3 bg-white/95 border-t border-purple-200/70">
+        <form id="form-forum" class="desktop-readable flex items-center gap-2">
+          <input type="text" id="forum-input" maxlength="1000" autocomplete="off"
+                 placeholder="Compartilhe uma vivência, dica ou dúvida com a comunidade..."
+                 class="flex-1 min-w-0 bg-[#f3effc] border border-purple-200 focus:border-[#7353ba] rounded-full px-4 py-2.5 text-sm text-slate-800 focus:outline-none min-h-[44px]" />
+          <button type="submit" id="forum-submit-btn" aria-label="Publicar mensagem no fórum" title="Publicar no fórum"
+                  class="pill-btn-purple w-11 h-11 shrink-0 flex items-center justify-center disabled:opacity-50">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         BARRA INFERIOR DO APLICATIVO (SINALIZAÇÃO DE PÁGINA INICIAL + PERFIL + VOLTAR)
+    =========================================== -->
+    <nav id="bottom-nav" class="hidden shrink-0 bg-white/95 backdrop-blur border-t border-purple-200/80 px-4 py-2 flex justify-around items-center gap-2 z-30 shadow-[0_-4px_14px_rgba(91,33,182,0.06)]">
+      <!-- Botão Voltar (exibido apenas nas telas internas, oculto na Página Inicial) -->
+      <button type="button" id="nav-btn-back" onclick="goBack()" aria-label="Voltar para a tela anterior"
+              class="hidden flex-1 max-w-[115px] py-2 px-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200/80 flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
         <i data-lucide="arrow-left" class="w-4 h-4"></i>
-        Voltar
+        <span>Voltar</span>
       </button>
-      <button type="button" onclick="goHome()" aria-label="Ir para a Página Inicial" class="pill-btn-home px-5 py-2.5 text-sm font-semibold flex items-center gap-1.5 min-h-[44px]">
+
+      <!-- Aba Página Inicial (com sinalização visual ativa quando na Home) -->
+      <button type="button" id="nav-btn-home" onclick="goHome()" aria-label="Ir para a Página Inicial" aria-current="page"
+              class="flex-1 max-w-[140px] py-2 px-3 rounded-2xl text-xs font-bold flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
         <i data-lucide="home" class="w-4 h-4"></i>
-        Página Inicial
+        <span>Página Inicial</span>
+      </button>
+
+      <!-- Aba Fórum -->
+      <button type="button" id="nav-btn-forum" onclick="openForum()" aria-label="Ir para o Fórum de Cuidadores"
+              class="flex-1 max-w-[130px] py-2 px-3 rounded-2xl text-xs font-semibold flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
+        <i data-lucide="messages-square" class="w-4 h-4"></i>
+        <span>Fórum</span>
+      </button>
+
+      <!-- Aba Meu Perfil (com sinalização visual ativa quando no Perfil) -->
+      <button type="button" id="nav-btn-profile" onclick="openProfile()" aria-label="Acessar Meu Perfil"
+              class="flex-1 max-w-[130px] py-2 px-3 rounded-2xl text-xs font-semibold flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition">
+        <i data-lucide="user-round" class="w-4 h-4"></i>
+        <span>Perfil</span>
       </button>
     </nav>
 

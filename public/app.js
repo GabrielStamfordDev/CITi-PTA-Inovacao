@@ -4,6 +4,7 @@ let appData = {
   links: [],
   artigos: [],
   faqs: [],
+  forumMessages: [],
 };
 let navHistory = [];
 let currentRegStep = 1;
@@ -497,20 +498,54 @@ function navigate(screenId, pushHistory = true) {
     target.scrollTop = 0;
   }
 
-  // Barra de acessibilidade e barra inferior aparecem apenas nas telas internas
-  const noBottomBarScreens = [
+  // Barra inferior aparece em todas as telas autenticadas (incluindo Home, Fórum e Perfil)
+  const authScreensWithoutBottomNav = [
     "screen-welcome",
     "screen-login",
     "screen-register",
     "screen-recover",
-    "screen-home",
   ];
-  const hideBars = noBottomBarScreens.includes(screenId);
-  document.getElementById("bottom-nav").classList.toggle("hidden", hideBars);
+  const hideBottomNav = authScreensWithoutBottomNav.includes(screenId);
+  const bottomNav = document.getElementById("bottom-nav");
+  if (bottomNav) bottomNav.classList.toggle("hidden", hideBottomNav);
+
+  // Barra de acessibilidade (tamanho da fonte) fica visível nas telas de leitura interna
+  const hideA11yBar = hideBottomNav || screenId === "screen-home";
   const a11yBar = document.getElementById("a11y-bar");
-  if (a11yBar) a11yBar.classList.toggle("hidden", hideBars);
+  if (a11yBar) a11yBar.classList.toggle("hidden", hideA11yBar);
+
+  updateBottomNavState(screenId);
 
   lucide.createIcons();
+}
+
+function updateBottomNavState(screenId) {
+  const backBtn = document.getElementById("nav-btn-back");
+  const homeBtn = document.getElementById("nav-btn-home");
+  const forumBtn = document.getElementById("nav-btn-forum");
+  const profileBtn = document.getElementById("nav-btn-profile");
+
+  // Botão Voltar aparece nas telas internas e fica oculto na Página Inicial
+  if (backBtn) {
+    backBtn.classList.toggle("hidden", screenId === "screen-home");
+  }
+
+  const applyNavTabStyle = (btn, isActive) => {
+    if (!btn) return;
+    if (isActive) {
+      btn.className =
+        "flex-1 max-w-[140px] py-2 px-3 rounded-2xl text-xs font-extrabold bg-[#ede9fe] text-[#5b21b6] border-2 border-[#7353ba] shadow-sm flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition";
+      btn.setAttribute("aria-current", "page");
+    } else {
+      btn.className =
+        "flex-1 max-w-[130px] py-2 px-3 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-purple-50 hover:text-[#5b21b6] border border-transparent flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition";
+      btn.removeAttribute("aria-current");
+    }
+  };
+
+  applyNavTabStyle(homeBtn, screenId === "screen-home");
+  applyNavTabStyle(forumBtn, screenId === "screen-forum");
+  applyNavTabStyle(profileBtn, screenId === "screen-profile");
 }
 
 function togglePasswordVisibility(inputId, btn) {
@@ -574,8 +609,23 @@ async function logout() {
 }
 
 function updateHomeGreeting(nome) {
-  const firstName = String(nome || "cuidador").trim().split(/\s+/)[0];
-  document.getElementById("home-greeting").textContent = `Olá, ${firstName}, como posso te ajudar hoje?`;
+  const firstName = String(nome || "Cuidador(a)").trim().split(/\s+/)[0];
+  const hour = new Date().getHours();
+  const period = hour < 12 ? "Bom dia," : hour < 18 ? "Boa tarde," : "Boa noite,";
+
+  const periodEl = document.getElementById("home-period-greeting");
+  if (periodEl) periodEl.textContent = period;
+
+  const greetingEl = document.getElementById("home-greeting");
+  if (greetingEl) greetingEl.textContent = `${firstName} 👋`;
+
+  const subtitleEl = document.getElementById("home-subtitle-care");
+  if (subtitleEl) {
+    const lovedOne = currentUser?.pessoaComAlzheimer?.trim();
+    subtitleEl.textContent = lovedOne
+      ? `Como está sendo o cuidado com ${lovedOne} hoje?`
+      : "Como está sendo o cuidado hoje?";
+  }
 }
 
 async function loadAppData() {
@@ -583,11 +633,15 @@ async function loadAppData() {
     const res = await authFetch("/api/dados");
     if (!res.ok) throw new Error("Erro ao carregar dados");
     appData = await res.json();
+    if (!Array.isArray(appData.forumMessages)) {
+      appData.forumMessages = [];
+    }
 
     renderEventos();
     renderLinks();
     renderArtigos();
     renderFaqs();
+    renderForumMessages();
   } catch (err) {
     console.error(err);
     showToast("Erro ao carregar dados do servidor.");
@@ -1857,6 +1911,179 @@ document.getElementById("form-assistant")?.addEventListener("submit", async (e) 
   e.preventDefault();
   const inputEl = document.getElementById("assistant-input");
   await sendAssistantQuestion(inputEl?.value || "");
+});
+
+// ==================================================
+// 8. FÓRUM DE CUIDADORES (COMUNIDADE MVP)
+// ==================================================
+let forumSending = false;
+
+function formatForumTimestamp(isoDate) {
+  if (!isoDate) return "";
+  try {
+    const d = new Date(isoDate);
+    if (Number.isNaN(d.getTime())) return "";
+    const dia = String(d.getDate()).padStart(2, "0");
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const hora = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${dia}/${mes} às ${hora}:${min}`;
+  } catch {
+    return "";
+  }
+}
+
+function formatForumMessageWithLinks(rawText) {
+  const safeText = escapeHtml(rawText);
+  return safeText.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+    const isYoutube = /youtube\.com|youtu\.be/i.test(url);
+    const label = isYoutube ? "Assistir vídeo recomendado no YouTube" : url;
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-[#5b21b6] font-bold text-xs underline break-all transition"><span>▶ ${label}</span></a>`;
+  });
+}
+
+function renderForumMessages(scrollToEnd = false) {
+  const container = document.getElementById("forum-messages-list");
+  if (!container) return;
+
+  const messages = Array.isArray(appData.forumMessages) ? appData.forumMessages : [];
+  if (!messages.length) {
+    container.innerHTML = `
+      <div class="desktop-readable bg-white/90 border border-purple-200 rounded-2xl p-5 text-center">
+        <p class="reader-body font-semibold text-slate-700">Ainda não há mensagens no fórum.</p>
+        <p class="text-xs text-slate-500 mt-1">Seja o primeiro a compartilhar uma experiência ou dica!</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = messages
+    .map((msg) => {
+      const isMine = currentUser && Number(msg.userId) === Number(currentUser.id);
+      const autorNome = msg.autor?.nome || "Cuidador(a)";
+      const initial = String(autorNome).trim().charAt(0).toUpperCase() || "C";
+      const details = [];
+      if (msg.autor?.pessoaComAlzheimer) {
+        details.push(`Cuida de ${msg.autor.pessoaComAlzheimer}`);
+      }
+      if (msg.autor?.estagioDaDoenca && msg.autor.estagioDaDoenca !== "Prefiro não informar") {
+        details.push(`Fase: ${msg.autor.estagioDaDoenca}`);
+      }
+      if (msg.autor?.cidade) {
+        details.push(msg.autor.cidade);
+      }
+      const subtitle = details.join(" • ");
+      const timeStr = formatForumTimestamp(msg.createdAt);
+
+      const speechKey = `forum-msg-${msg.id}`;
+      const speechBtnId = `btn-tts-forum-${msg.id}`;
+      speechTexts[speechKey] = `${autorNome} escreveu no fórum: ${msg.conteudo}`;
+
+      const cardAlignClass = isMine
+        ? "bg-[#ede9fe] border-[#7353ba]/40 ml-4"
+        : "bg-white border-purple-200/80 mr-4";
+
+      return `
+        <article class="desktop-readable rounded-2xl border ${cardAlignClass} p-4 shadow-sm space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-9 h-9 rounded-full ${isMine ? "bg-[#5b21b6] text-white" : "bg-emerald-100 text-emerald-800 border border-emerald-200"} font-brand font-extrabold text-sm flex items-center justify-center shrink-0">
+                ${escapeHtml(initial)}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-brand text-sm font-extrabold text-slate-900">${escapeHtml(autorNome)}</span>
+                  ${
+                    isMine
+                      ? `<span class="px-2 py-0.5 rounded-full bg-[#5b21b6] text-white text-[10px] font-bold">Você</span>`
+                      : `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Membro da Comunidade</span>`
+                  }
+                </div>
+                ${subtitle ? `<p class="text-[11px] text-slate-500 truncate">${escapeHtml(subtitle)}</p>` : ""}
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              ${timeStr ? `<span class="text-[10px] text-slate-400 font-medium">${escapeHtml(timeStr)}</span>` : ""}
+              ${buildSpeechButtonHtml(speechBtnId, speechKey, "Ouvir", true)}
+            </div>
+          </div>
+
+          <div class="reader-body text-slate-800 leading-relaxed whitespace-pre-line break-words pt-1">
+            ${formatForumMessageWithLinks(msg.conteudo)}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  if (scrollToEnd) {
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+  }
+}
+
+async function loadForumMessages(showFeedback = false) {
+  try {
+    const res = await authFetch("/api/forum/mensagens");
+    if (!res.ok) throw new Error("Erro ao carregar mensagens do fórum");
+    const data = await res.json();
+    appData.forumMessages = Array.isArray(data.messages) ? data.messages : [];
+    renderForumMessages(false);
+    lucide.createIcons();
+    if (showFeedback) showToast("Fórum atualizado!");
+  } catch (err) {
+    console.error(err);
+    if (showFeedback) showToast("Não foi possível atualizar o fórum agora.");
+  }
+}
+
+async function openForum() {
+  navigate("screen-forum");
+  renderForumMessages(false);
+  await loadForumMessages(false);
+}
+
+document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (forumSending) return;
+
+  const inputEl = document.getElementById("forum-input");
+  const submitBtn = document.getElementById("forum-submit-btn");
+  const conteudo = String(inputEl?.value || "").trim();
+  if (!conteudo) return;
+
+  forumSending = true;
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const res = await authFetch("/api/forum/mensagens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conteudo }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data?.message || "Erro ao publicar mensagem no fórum.");
+      return;
+    }
+
+    if (inputEl) inputEl.value = "";
+    if (data?.message) {
+      appData.forumMessages.push(data.message);
+      renderForumMessages(true);
+      lucide.createIcons();
+    } else {
+      await loadForumMessages(false);
+    }
+    showToast("Mensagem publicada no fórum!");
+  } catch (err) {
+    console.error(err);
+    showToast("Erro de conexão ao enviar mensagem.");
+  } finally {
+    forumSending = false;
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
 window.addEventListener("DOMContentLoaded", async () => {
