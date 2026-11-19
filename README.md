@@ -42,7 +42,7 @@ Por boas práticas de segurança, o arquivo `.env` com segredos **não vai para 
    - `GEMINI_API_KEY`: obtida no Google AI Studio, habilita a geração de respostas humanizadas com Gemini e embeddings vetoriais (`gemini-embedding-001`).
    - `BREVO_API_KEY` (com `MAIL_PROVIDER=brevo` e `MAIL_FROM_EMAIL`): habilita o disparo real de e-mails de recuperação de senha.
 2. **Mesmo sem nenhuma chave API configurada, o projeto roda localmente:** o CuiDA possui *fallbacks* automáticos para desenvolvimento e avaliação offline:
-   - **Sem `GEMINI_API_KEY`:** o Assistente CuiDA passa a operar automaticamente no modo **`rag-local`** (busca lexical no acervo científico indexado via `src/rag/ingestCli.ts --lexical-only`), retornando orientações estruturadas com citações sem exigir chamada à API do Gemini.
+   - **Sem `GEMINI_API_KEY`:** o Assistente CuiDA passa a operar automaticamente no modo **`rag-local`** (usando o acervo curado em memória ou os PDFs indexados via `yarn rag:ingest --lexical-only`), retornando orientações estruturadas com citações sem exigir chamada à API do Gemini.
    - **Sem `BREVO_API_KEY` (com `MAIL_PROVIDER=console`, padrão do `.env.example`):** na recuperação de senha, o código de 6 dígitos (válido por 15 minutos) é exibido diretamente no terminal onde o servidor Node.js está rodando.
 
 ---
@@ -107,10 +107,10 @@ Todo o embasamento da pesquisa com cuidadores, definição de problema, ideaçã
 
 ### Pré-requisitos
 - **Git**
-- **Node.js** (v18+) e **Yarn**
+- **Node.js** (`>= 22.13.0`) e **Yarn**
 - **Docker Desktop** (ou Docker Engine + Docker Compose)
 
-### 1. Clonar o repositório e instalar dependências
+### 1. Clonar, instalar dependências e criar o `.env`
 
 ```bash
 git clone https://github.com/GabrielStamfordDev/CITi-PTA-Inovacao.git
@@ -118,9 +118,7 @@ cd CITi-PTA-Inovacao
 yarn install
 ```
 
-### 2. Configurar as variáveis de ambiente (`.env`)
-
-Crie o arquivo `.env` a partir do modelo `.env.example`:
+Crie o `.env` copiando o `.env.example` (que já vem configurado para o PostgreSQL do Docker e modo terminal):
 
 - **Linux / macOS / Git Bash:**
   ```bash
@@ -131,7 +129,7 @@ Crie o arquivo `.env` a partir do modelo `.env.example`:
   Copy-Item .env.example .env
   ```
 
-Edite o `.env` conforme o modo em que deseja executar localmente:
+> **Quer rodar sem configurar chaves externas?** Você não precisa editar nada no `.env`! Basta seguir para o Passo 2. Se quiser ativar **Gemini** e **Brevo** localmente, preencha as variáveis opcionais abaixo no `.env`:
 
 | Variável | Obrigatória localmente? | Descrição e comportamento |
 | :--- | :--- | :--- |
@@ -141,39 +139,31 @@ Edite o `.env` conforme o modo em que deseja executar localmente:
 | `MAIL_PROVIDER` | Já vem como `console` | Com `console`, códigos de redefinição de senha aparecem no terminal. Para enviar e-mails reais, defina `brevo`. |
 | `BREVO_API_KEY` | Apenas se `MAIL_PROVIDER=brevo` | Sua chave transacional da Brevo + `MAIL_FROM_EMAIL` verificado. |
 
-### 3. Subir o banco PostgreSQL com `pgvector` e preparar os dados
+### 2. Subir e iniciar com os 4 comandos essenciais
+
+Com apenas esses 4 comandos, toda a aplicação (login, perfil, Fórum e Assistente CuiDA) já entra no ar em **[http://localhost:3001](http://localhost:3001)**:
 
 ```bash
 docker-compose up -d
-npx prisma generate
-npx prisma migrate deploy
-npx prisma db seed
+yarn migration
+yarn seed
+yarn dev
 ```
 
-### 4. Indexar o acervo científico (RAG)
+*(Para testar em build de produção local, use `yarn build` seguido de `yarn start`.)*
 
-- **Se você configurou sua `GEMINI_API_KEY` no `.env` (indexação vetorial + lexical completa):**
-  ```bash
-  npx ts-node src/rag/ingestCli.ts
-  ```
-- **Se você NÃO colocou `GEMINI_API_KEY` (indexação lexical local gratuita e offline):**
-  ```bash
-  npx ts-node src/rag/ingestCli.ts --lexical-only
-  ```
+### 3. (Opcional) Indexar os 8 PDFs completos para busca página a página
 
-### 5. Iniciar a aplicação
+Mesmo sem rodar este passo, o Assistente já funciona normalmente usando os resumos científicos curados embarcados no código (`src/data/acervoCientifico.ts`). Caso queira ativar o **RAG híbrido completo com citações por página** direto dos 8 PDFs de `acervo-pdf/` no PostgreSQL local:
 
-- **Modo desenvolvimento (com recarregamento automático):**
+- **Com `GEMINI_API_KEY` no `.env` (vetorial + lexical):**
   ```bash
-  npx ts-node-dev --respawn --transpile-only src/server.ts
+  yarn rag:ingest
   ```
-- **Modo build de produção:**
+- **Sem `GEMINI_API_KEY` (apenas indexação lexical local):**
   ```bash
-  npx tsc
-  node dist/server.js
+  yarn rag:ingest --lexical-only
   ```
-
-Acesse no navegador: **[http://localhost:3001](http://localhost:3001)**
 
 ---
 
