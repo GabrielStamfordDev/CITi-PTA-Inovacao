@@ -1008,6 +1008,18 @@ function toggleFaq(id) {
   if (!ans) return;
 
   const isHidden = ans.classList.contains("hidden");
+
+  // Mantém apenas uma resposta aberta por vez (leitura mais focada)
+  if (isHidden) {
+    document.querySelectorAll("[id^='faq-ans-']").forEach((other) => {
+      if (other.id === `faq-ans-${id}` || other.classList.contains("hidden")) return;
+      const otherId = other.id.replace("faq-ans-", "");
+      other.classList.add("hidden");
+      document.getElementById(`faq-tri-${otherId}`)?.classList.remove("rotate-180");
+      document.getElementById(`faq-btn-${otherId}`)?.setAttribute("aria-expanded", "false");
+    });
+    stopSpeech();
+  }
   ans.classList.toggle("hidden", !isHidden);
   if (tri) tri.classList.toggle("rotate-180", isHidden);
   if (btn) btn.setAttribute("aria-expanded", isHidden ? "true" : "false");
@@ -1861,6 +1873,26 @@ function openAssistant() {
   }
   loadAssistantSources();
   navigate("screen-assistente");
+}
+
+function startNewAssistantConversation() {
+  if (assistantState.loading) {
+    showToast("Aguarde a resposta atual terminar.");
+    return;
+  }
+  const hasConversation = assistantState.messages.some((m) => !m.isWelcome);
+  if (hasConversation && !window.confirm("Iniciar uma nova conversa? O histórico atual será apagado desta tela.")) {
+    return;
+  }
+  stopSpeech();
+  assistantState.messages = [buildWelcomeAssistantMessage()];
+  renderAssistantMessages("to-top");
+  const inputEl = document.getElementById("assistant-input");
+  if (inputEl) {
+    inputEl.value = "";
+    inputEl.focus();
+  }
+  lucide.createIcons();
 }
 
 function askAssistantQuick(questionText) {
