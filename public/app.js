@@ -615,7 +615,10 @@ async function confirmLogout() {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeLogoutModal();
+  if (e.key === "Escape") {
+    closeLogoutModal();
+    closeNewChatModal();
+  }
 });
 
 async function logout() {
@@ -1556,10 +1559,25 @@ function resetAssistantState() {
   assistantState.messages = [];
   assistantState.loading = false;
   assistantState.sourcesPanelOpen = false;
+  if (typeof closeNewChatModal === "function") closeNewChatModal();
   const panel = document.getElementById("assistant-sources-panel");
   if (panel) panel.classList.add("hidden");
   const toggleBtn = document.getElementById("assistant-sources-toggle");
   if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
+}
+
+function stripAssistantEvidenceTags(rawText) {
+  return String(rawText || "")
+    .replace(/\n?\s*\[FONTES_USADAS:\s*[^\]]*\]\s*/gi, "\n")
+    .replace(
+      /[ \t]*\[(?:FONTES?(?:_USADAS)?\s*:?\s*|EVID[ÊE]NCIAS?\s*:?\s*)?E\d+(?:\s*(?:,|;|\/|\be\b)\s*E\d+)*\]/gi,
+      ""
+    )
+    .replace(/[ \t]*\(E\d+(?:\s*(?:,|;|\/|\be\b)\s*E\d+)*\)/gi, "")
+    .replace(/[ \t]+([.,;!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function formatAssistantInlineMarkdown(rawLine) {
@@ -1569,7 +1587,7 @@ function formatAssistantInlineMarkdown(rawLine) {
 }
 
 function formatAssistantAnswerHtml(rawText) {
-  const lines = String(rawText || "").split("\n");
+  const lines = stripAssistantEvidenceTags(rawText).split("\n");
   const htmlParts = [];
   let listItems = [];
 
@@ -1605,7 +1623,7 @@ function formatAssistantAnswerHtml(rawText) {
 }
 
 function stripMarkdownForSpeech(rawText) {
-  return String(rawText || "")
+  return stripAssistantEvidenceTags(rawText)
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/^[-•*]\s+/gm, "")
     .trim();
@@ -1720,6 +1738,95 @@ function scrollAssistantToBottom() {
   if (container) container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
 }
 
+async function copyAssistantAnswer(msgIdx) {
+  const msg = assistantState.messages[Number(msgIdx)];
+  if (!msg || !msg.content) return;
+
+  const cleanBody = stripAssistantEvidenceTags(msg.content)
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .trim();
+
+  const lines = ["💜 Orientação do Assistente CuiDA:", "", cleanBody];
+
+  if (Array.isArray(msg.sources) && msg.sources.length) {
+    const seen = new Set();
+    const sourceLines = [];
+    for (const src of msg.sources) {
+      const pageInfo = src.startPage
+        ? src.endPage && src.endPage !== src.startPage
+          ? `, págs. ${src.startPage}–${src.endPage}`
+          : `, pág. ${src.startPage}`
+        : "";
+      const label = `• ${src.title} (${src.institution}${pageInfo})`;
+      if (!seen.has(label)) {
+        seen.add(label);
+        sourceLines.push(label);
+      }
+    }
+    if (sourceLines.length) {
+      lines.push("", "📚 Fontes científicas:", ...sourceLines);
+    }
+  }
+
+  lines.push("", "ℹ️ Base educativa CuiDA • Não substitui consulta médica.");
+  const fullText = lines.join("\n");
+
+  let copied = false;
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(fullText);
+      copied = true;
+    } catch {
+      copied = false;
+    }
+  }
+
+  if (!copied) {
+    const textarea = document.createElement("textarea");
+    textarea.value = fullText;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
+  if (!copied) {
+    showToast("Não foi possível copiar automaticamente neste navegador.");
+    return;
+  }
+
+  const btn = document.getElementById(`copy-btn-ast-${msgIdx}`);
+  if (btn) {
+    if (btn.dataset.resetTimerId) {
+      clearTimeout(Number(btn.dataset.resetTimerId));
+    }
+    btn.className =
+      "inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 font-semibold px-3.5 py-1.5 text-xs transition";
+    btn.innerHTML = `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span>Copiado!</span>`;
+
+    const timerId = setTimeout(() => {
+      const currentBtn = document.getElementById(`copy-btn-ast-${msgIdx}`);
+      if (!currentBtn) return;
+      currentBtn.className =
+        "inline-flex items-center gap-1.5 rounded-full bg-white hover:bg-purple-50 border border-purple-200 text-[#5b21b6] font-semibold px-3.5 py-1.5 text-xs transition";
+      currentBtn.innerHTML = `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span>Copiar orientação</span>`;
+      delete currentBtn.dataset.resetTimerId;
+    }, 2200);
+    btn.dataset.resetTimerId = String(timerId);
+  }
+
+  showToast("Orientação copiada! Agora você pode colar no WhatsApp ou nas suas anotações.");
+}
+
 function renderAssistantMessages(scrollBehavior = "preserve") {
   const container = document.getElementById("assistant-messages");
   if (!container) return;
@@ -1801,7 +1908,18 @@ function renderAssistantMessages(scrollBehavior = "preserve") {
           <div class="w-full max-w-[96%] bg-white rounded-2xl rounded-bl-sm px-4 py-3.5 shadow-sm border border-purple-200/80 space-y-2">
             ${formatAssistantAnswerHtml(msg.content)}
             <div class="pt-1 flex flex-wrap items-center justify-between gap-2">
-              ${buildSpeechButtonHtml(`speech-btn-ast-${msgIdx}`, speechKey, "Ouvir orientação", true)}
+              <div class="flex flex-wrap items-center gap-1.5">
+                ${buildSpeechButtonHtml(`speech-btn-ast-${msgIdx}`, speechKey, "Ouvir orientação", true)}
+                ${
+                  msg.isWelcome
+                    ? ""
+                    : `<button type="button" id="copy-btn-ast-${msgIdx}" onclick="copyAssistantAnswer(${msgIdx})"
+                               class="inline-flex items-center gap-1.5 rounded-full bg-white hover:bg-purple-50 border border-purple-200 text-[#5b21b6] font-semibold px-3.5 py-1.5 text-xs transition">
+                         <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                         <span>Copiar orientação</span>
+                       </button>`
+                }
+              </div>
               ${
                 msg.isWelcome
                   ? ""
@@ -1881,9 +1999,23 @@ function startNewAssistantConversation() {
     return;
   }
   const hasConversation = assistantState.messages.some((m) => !m.isWelcome);
-  if (hasConversation && !window.confirm("Iniciar uma nova conversa? O histórico atual será apagado desta tela.")) {
-    return;
+  if (hasConversation) {
+    const modal = document.getElementById("new-chat-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      lucide.createIcons();
+      return;
+    }
   }
+  confirmNewAssistantConversation();
+}
+
+function closeNewChatModal() {
+  document.getElementById("new-chat-modal")?.classList.add("hidden");
+}
+
+function confirmNewAssistantConversation() {
+  closeNewChatModal();
   stopSpeech();
   assistantState.messages = [buildWelcomeAssistantMessage()];
   renderAssistantMessages("to-top");

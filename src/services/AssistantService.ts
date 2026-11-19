@@ -303,24 +303,46 @@ export function extractAndValidateUsedEvidenceIds(
   rawReply: string,
   sentIds: Set<string>
 ): { cleanedAnswer: string; citedIds: string[] } {
-  const markerRegex = /\[FONTES_USADAS:\s*([^\]]+)\]/gi;
   const cited: string[] = [];
   const seen = new Set<string>();
 
-  let match: RegExpExecArray | null;
-  while ((match = markerRegex.exec(rawReply)) !== null) {
-    const tokens = match[1].split(/[,\s;]+/);
-    for (const tok of tokens) {
-      const id = tok.trim().toUpperCase();
+  const addTokenList = (chunk: string) => {
+    const idMatches = chunk.match(/\bE\d+\b/gi) || [];
+    for (const rawId of idMatches) {
+      const id = rawId.toUpperCase();
       if (sentIds.has(id) && !seen.has(id)) {
         seen.add(id);
         cited.push(id);
       }
     }
+  };
+
+  const markerRegex = /\[FONTES_USADAS:\s*([^\]]+)\]/gi;
+  const inlineBracketRegex =
+    /\[(?:FONTES?(?:_USADAS)?\s*:?\s*|EVID[ÊE]NCIAS?\s*:?\s*)?E\d+(?:\s*(?:,|;|\/|\be\b)\s*E\d+)*\]/gi;
+  const inlineParenRegex = /\(E\d+(?:\s*(?:,|;|\/|\be\b)\s*E\d+)*\)/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = markerRegex.exec(rawReply)) !== null) {
+    addTokenList(match[1]);
+  }
+  while ((match = inlineBracketRegex.exec(rawReply)) !== null) {
+    addTokenList(match[0]);
+  }
+  while ((match = inlineParenRegex.exec(rawReply)) !== null) {
+    addTokenList(match[0]);
   }
 
   const cleanedAnswer = rawReply
-    .replace(/\n?\s*\[FONTES_USADAS:\s*[^\]]+\]\s*/gi, "")
+    .replace(/\n?\s*\[FONTES_USADAS:\s*[^\]]*\]\s*/gi, "\n")
+    .replace(
+      /[ \t]*\[(?:FONTES?(?:_USADAS)?\s*:?\s*|EVID[ÊE]NCIAS?\s*:?\s*)?E\d+(?:\s*(?:,|;|\/|\be\b)\s*E\d+)*\]/gi,
+      ""
+    )
+    .replace(/[ \t]*\(E\d+(?:\s*(?:,|;|\/|\be\b)\s*E\d+)*\)/gi, "")
+    .replace(/[ \t]+([.,;!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 
   return { cleanedAnswer, citedIds: cited };

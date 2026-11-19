@@ -1028,6 +1028,21 @@
       </div>
     </div>
 
+    <!-- Confirmação para iniciar nova conversa no Assistente (dentro do aplicativo) -->
+    <div id="new-chat-modal" class="hidden absolute inset-0 z-50 bg-slate-900/50 flex items-center justify-center px-6" role="dialog" aria-modal="true" aria-labelledby="new-chat-modal-title">
+      <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-[320px] text-center animate-pop">
+        <div class="w-12 h-12 mx-auto rounded-full bg-purple-100 text-[#5b21b6] flex items-center justify-center mb-3">
+          <i data-lucide="square-pen" class="w-6 h-6"></i>
+        </div>
+        <h3 id="new-chat-modal-title" class="font-brand text-lg font-extrabold text-slate-900">Iniciar nova conversa?</h3>
+        <p class="text-sm text-slate-600 mt-1">O histórico atual será apagado desta tela para você começar uma nova dúvida.</p>
+        <div class="mt-5 flex flex-col gap-2">
+          <button type="button" onclick="confirmNewAssistantConversation()" class="pill-btn-purple w-full py-3 text-sm font-bold min-h-[44px]">Sim, nova conversa</button>
+          <button type="button" onclick="closeNewChatModal()" class="pill-btn-white w-full py-3 text-sm font-semibold text-slate-700 min-h-[44px]">Continuar conversa atual</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==========================================
          BARRA INFERIOR DO APLICATIVO (SINALIZAÇÃO DE PÁGINA INICIAL + PERFIL + VOLTAR)
     =========================================== -->
