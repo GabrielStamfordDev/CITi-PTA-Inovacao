@@ -56,10 +56,10 @@ export interface AssistantResponse {
 const ACERVO_DIR = resolveProjectPath("acervo-pdf");
 const PROMPT_PTCF_PATH = resolveProjectPath("src", "prompts", "assistente-cuida.ptcf.md");
 const GEMINI_MODELS = [
+  "gemini-3-flash-preview",
   "gemini-flash-lite-latest",
-  "gemini-3.1-flash-lite",
-  "gemini-3.8-flash",
-  "gemini-4-hydrogen",
+  "gemini-flash-latest",
+  "gemini-3.5-flash",
 ];
 
 function normalizeText(value: string): string {
@@ -261,7 +261,7 @@ async function callGeminiWithEvidence(params: {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(10000),
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: systemInstruction }] },
             contents,
@@ -787,8 +787,8 @@ ${chunk.content}
   }
 
   if (!finalAnswer) {
-    // No modo offline sem Gemini, só exibe trechos crus se houver evidência suficiente e sólida
-    if (retrieval.evidenceStatus !== "sufficient") {
+    // No modo offline sem Gemini, só recusa se não houver nem evidência suficiente nem parcial
+    if (retrieval.evidenceStatus !== "sufficient" && retrieval.evidenceStatus !== "partial") {
       return {
         answer: buildInsufficientOrOutOfScopeAnswer({
           evidenceStatus: "insufficient",
