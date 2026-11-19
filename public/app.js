@@ -690,38 +690,7 @@ function getEventoMetadata(ev) {
   };
 }
 
-function renderHomeUpcoming() {
-  const box = document.getElementById("home-upcoming");
-  if (!box) return;
-  const eventos = Array.isArray(appData.eventos) ? appData.eventos : [];
-  const ev = eventos.find((e) => e.inscrito) || eventos[0];
-  if (!ev) {
-    box.classList.add("hidden");
-    return;
-  }
-  const { modalidade } = getEventoMetadata(ev);
-  box.innerHTML = `
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="font-brand text-base font-extrabold text-slate-800">${ev.inscrito ? "Seu próximo evento" : "Próximo evento"}</h3>
-      <button type="button" onclick="navigate('screen-eventos')" class="text-xs font-bold text-[#5b21b6] hover:underline">Ver todos</button>
-    </div>
-    <button type="button" onclick="openEvento(${ev.id})"
-            class="w-full text-left bg-white/95 hover:bg-purple-50/70 border border-purple-200/70 hover:border-[#7353ba] rounded-2xl p-3.5 shadow-sm transition flex items-center gap-3">
-      <div class="w-12 h-12 shrink-0 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex flex-col items-center justify-center leading-none">
-        <span class="font-brand text-sm font-extrabold">${escapeHtml(ev.data)}</span>
-      </div>
-      <div class="min-w-0 flex-1">
-        <p class="font-brand text-sm font-extrabold text-slate-800 leading-snug">${escapeHtml(ev.titulo)}</p>
-        <p class="text-[11px] text-slate-500 mt-0.5">${escapeHtml(ev.horario)} • ${escapeHtml(modalidade)}</p>
-      </div>
-      ${ev.inscrito ? `<span class="shrink-0 bg-purple-100 text-[#5b21b6] font-bold px-2 py-1 rounded-full text-[10px]">✓ Inscrito</span>` : `<span class="shrink-0 text-[#5b21b6] text-lg" aria-hidden="true">›</span>`}
-    </button>
-  `;
-  box.classList.remove("hidden");
-}
-
 function renderEventos() {
-  renderHomeUpcoming();
   const container = document.getElementById("eventos-list");
   if (!appData.eventos.length) {
     container.innerHTML = `<p class="text-center reader-sm text-slate-600 py-8">Nenhum evento disponível no momento.</p>`;
