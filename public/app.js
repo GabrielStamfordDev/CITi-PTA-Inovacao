@@ -2196,6 +2196,19 @@ function renderActiveForumRoomHeader() {
   if (joinBar) joinBar.classList.toggle("hidden", isMember);
 }
 
+function formatForumDayLabel(isoDate) {
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return { key: "", label: "" };
+  const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOf(new Date()) - startOf(d)) / 86400000);
+  const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  if (diffDays === 0) return { key, label: "Hoje" };
+  if (diffDays === 1) return { key, label: "Ontem" };
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  return { key, label: `${dia}/${mes}/${d.getFullYear()}` };
+}
+
 function renderForumMessages(scrollToEnd = false) {
   const container = document.getElementById("forum-messages-list");
   if (!container) return;
@@ -2211,8 +2224,15 @@ function renderForumMessages(scrollToEnd = false) {
     return;
   }
 
+  let lastDayKey = "";
   container.innerHTML = messages
     .map((msg) => {
+      const day = formatForumDayLabel(msg.createdAt);
+      let daySeparator = "";
+      if (day.key && day.key !== lastDayKey) {
+        lastDayKey = day.key;
+        daySeparator = `<div class="flex justify-center py-1"><span class="px-3 py-1 rounded-full bg-white/90 border border-purple-200 text-[11px] font-bold text-[#5b21b6] shadow-sm">${escapeHtml(day.label)}</span></div>`;
+      }
       const isMine = currentUser && Number(msg.userId) === Number(currentUser.id);
       const autorNome = msg.autor?.nome || "Cuidador(a)";
       const initial = String(autorNome).trim().charAt(0).toUpperCase() || "C";
@@ -2238,7 +2258,7 @@ function renderForumMessages(scrollToEnd = false) {
         : "bg-white border-purple-200/80 mr-4";
 
       return `
-        <article class="desktop-readable rounded-2xl border ${cardAlignClass} p-4 shadow-sm space-y-2">
+        ${daySeparator}<article class="desktop-readable rounded-2xl border ${cardAlignClass} p-4 shadow-sm space-y-2">
           <div class="flex items-start justify-between gap-2">
             <div class="flex items-center gap-2.5 min-w-0">
               <div class="w-9 h-9 rounded-full ${isMine ? "bg-[#5b21b6] text-white" : "bg-emerald-100 text-emerald-800 border border-emerald-200"} font-brand font-extrabold text-sm flex items-center justify-center shrink-0">
@@ -2335,10 +2355,22 @@ async function openForumRoom(roomId) {
     activeForumRoom = { id, nome: "Fórum", descricao: "", categoria: "", membrosCount: 0, participando: false, padrao: false };
   }
 
-  appData.forumMessages = Array.isArray(forumMessagesCache[id]) ? forumMessagesCache[id] : [];
+  const hasCache = Array.isArray(forumMessagesCache[id]);
+  appData.forumMessages = hasCache ? forumMessagesCache[id] : [];
   renderActiveForumRoomHeader();
   navigate("screen-forum-room");
-  renderForumMessages(true);
+  if (hasCache) {
+    renderForumMessages(true);
+  } else {
+    const listEl = document.getElementById("forum-messages-list");
+    if (listEl) {
+      listEl.innerHTML = `
+        <div class="desktop-readable flex flex-col items-center gap-2 py-10 text-slate-500" role="status" aria-live="polite">
+          <span class="w-8 h-8 rounded-full border-4 border-purple-200 border-t-[#7353ba] animate-spin"></span>
+          <p class="text-xs font-semibold">Carregando conversa...</p>
+        </div>`;
+    }
+  }
   lucide.createIcons();
 
   await loadActiveForumRoom(false, true);
