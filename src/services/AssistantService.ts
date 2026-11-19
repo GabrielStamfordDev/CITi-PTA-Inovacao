@@ -505,8 +505,8 @@ function deriveContextualSuggestions(chunks: RetrievedRagChunk[]): string[] {
   if (/sono|noite|entardecer|madrugada/.test(joined)) {
     suggestions.push("Quais hábitos durante o dia ajudam a melhorar o sono à noite?");
   }
-  if (/medic|sus|pcdt|remedio/.test(joined)) {
-    suggestions.push("Como solicitar medicamentos gratuitos de Alzheimer no SUS?");
+  if (/alimenta|engasg|refei|comer/.test(joined)) {
+    suggestions.push("Como facilitar a alimentação e prevenir engasgos?");
   }
   if (/dialogo|validacao|repet/.test(joined)) {
     suggestions.push("Como usar a Terapia de Validação quando ele(a) se repete muito?");
@@ -573,7 +573,7 @@ async function answerUsingCuratedFallback(params: {
       sources: [],
       suggestions: [
         "Como facilitar o banho sem gerar conflito?",
-        "Quais remédios de Alzheimer são gratuitos no SUS?",
+        "Como acalmar a agitação no fim da tarde?",
       ],
       engine: "rag-local",
       evidenceStatus: "insufficient",
@@ -721,7 +721,7 @@ export async function answerCaregiverQuestion(params: {
       suggestions: [
         "Como facilitar o banho quando há resistência?",
         "O que fazer na agitação do fim da tarde?",
-        "Quais medicamentos de Alzheimer estão disponíveis no SUS?",
+        "Como lidar quando o familiar repete a mesma pergunta várias vezes?",
       ],
       engine: "rag-local",
       evidenceStatus: retrieval.evidenceStatus,

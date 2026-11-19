@@ -405,7 +405,7 @@ export const SCIENTIFIC_CHUNKS: ScientificChunk[] = [
     whenToSeekDoctor:
       "Converse com o geriatra ou médico da UBS antes de qualquer ajuste de medicação, caso o paciente recuse engolir comprimidos (o adesivo transdérmico de rivastigmina pode ser avaliado pelo médico) ou se houver efeitos colaterais.",
     followUpSuggestions: [
-      "Quais documentos preciso levar para pedir os remédios no SUS?",
+      "Como funciona a isenção de Imposto de Renda na Doença de Alzheimer?",
       "Como organizar documentos e proteger as finanças do familiar?",
     ],
   },

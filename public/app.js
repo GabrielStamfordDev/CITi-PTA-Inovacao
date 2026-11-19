@@ -1628,7 +1628,7 @@ function buildWelcomeAssistantMessage() {
     suggestions: [
       "Meu familiar quer sair de casa para ir embora. Como agir?",
       "Como facilitar o banho sem gerar conflito?",
-      "Quais medicamentos são gratuitos no SUS?",
+      "Como lidar com a agitação no fim da tarde (Síndrome do Pôr do Sol)?",
     ],
     isWelcome: true,
   };
@@ -1907,11 +1907,16 @@ function renderAssistantMessages(scrollBehavior = "preserve") {
     })
     .join("");
 
+  const loadingFirstName = currentUser?.nome?.trim().split(/\s+/)[0];
+  const loadingMessage = loadingFirstName
+    ? `Só um instante, ${escapeHtml(loadingFirstName)}... Estou preparando uma orientação com carinho para você 💜`
+    : "Só um instante... Estou preparando uma orientação com carinho para você 💜";
+
   const loadingHtml = assistantState.loading
     ? `<div id="assistant-loading-indicator" class="flex justify-start">
          <div class="bg-white rounded-2xl px-4 py-3 border border-purple-200 shadow-sm text-xs text-[#5b21b6] font-medium flex items-center gap-2">
-           <span class="inline-block w-2 h-2 rounded-full bg-[#7353ba] animate-pulse"></span>
-           <span>Consultando o acervo científico do CuiDA...</span>
+           <span class="inline-block w-2 h-2 rounded-full bg-[#7353ba] animate-pulse shrink-0"></span>
+           <span>${loadingMessage}</span>
          </div>
        </div>`
     : "";
