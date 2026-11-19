@@ -65,14 +65,11 @@ const PT_STOPWORDS = new Set([
   "sentindo", "sente", "sentir", "sentiu", "ficando", "ficou", "fique", "passando",
   "teve", "apareceu", "surgiu", "comecou", "toma", "tomando", "forte", "direito",
   "esquerdo", "passar", "andar",
-  "estrategia", "estrategias", "ajuda", "ajudam", "reduzir", "melhorar", "prevenir",
-  "evitar", "tornar", "funciona", "funcionam", "durante", "usar", "habitos",
-  "seguro", "segura", "gerar", "facilitar", "acalmar", "conflito", "conflitos",
 ]);
 
 const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
   {
-    pattern: /\b(chuveiro|banheira|banheiro|lavar|tomar banho|banho|higiene)\b/,
+    pattern: /\b(chuveiro|banheira|lavar|tomar banho|banho|higiene)\b/,
     extras: ["banho", "higiene", "agua", "privacidade", "toalha", "bathing", "washing", "shower"],
   },
   {
@@ -88,7 +85,7 @@ const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
     extras: ["sair", "casa", "validacao", "redirecionar", "seguranca", "perambulacao", "wandering", "home"],
   },
   {
-    pattern: /\b(andar sem parar|anda sem parar|andando sem rumo|andando pela casa|perambulac\w*|wander\w*|se perder|desaparec\w*|queda\w*)\b/,
+    pattern: /\b(andar sem parar|anda sem parar|andando sem rumo|andando pela casa|perambulac\w*|wander\w*|se perder|desaparec\w*)\b/,
     extras: ["perambulacao", "wandering", "identificacao", "seguranca", "walking"],
   },
   {
@@ -100,7 +97,7 @@ const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
     extras: ["alimentacao", "refeicao", "engasgo", "degluticao", "hidratacao", "eating", "feeding", "swallowing"],
   },
   {
-    pattern: /\b(repet\w*|mesma pergunta|perguntando|conversa|dialogo|validac\w*|terapia|teimos\w*|paciencia)\b/,
+    pattern: /\b(repet\w*|mesma pergunta|perguntando|conversa|dialogo|teimos\w*|paciencia)\b/,
     extras: ["repeticao", "comunicacao", "validacao", "dialogo", "calma", "repeating", "communication"],
   },
   {
@@ -108,7 +105,7 @@ const DOMAIN_LEXICAL_EXPANSIONS: { pattern: RegExp; extras: string[] }[] = [
     extras: ["agitacao", "agressividade", "alucinacoes", "delirio", "validacao", "aggression", "hallucinations", "delusions"],
   },
   {
-    pattern: /\b(cansad\w*|exaust\w*|esgot\w*|chorand\w*|culpa|sozinho|sozinha|depress\w*|sobrecarg\w*|desgaste|estress\w*|autocuidado|saude mental|isupport|abraz|grupo\w*|apoio|direitos|beneficio\w*|isencao|inss|curatela)\b/,
+    pattern: /\b(cansad\w*|exaust\w*|chorand\w*|culpa|sozinho|sozinha|depress\w*|sobrecarg\w*|desgaste|estress\w*|grupo\w*|apoio|direitos|beneficio\w*|isencao|inss|curatela)\b/,
     extras: ["cuidador", "autocuidado", "sobrecarga", "apoio", "direitos", "isupport", "abraz", "stress", "carer", "support"],
   },
 ];
@@ -287,18 +284,14 @@ function classifyEvidence(params: {
       return bestCosine < 0.56 && !hasDomainExpansion ? "out_of_scope" : "insufficient";
     }
 
-    if (
-      passesStrongVector ||
-      (passesPartialVector && (hasSingleChunkMultiTermCooccurrence || hasStrongDomainMatch)) ||
-      (passesVerifiedLexical && (bestCosine >= 0.54 || bestLexical >= 0.45))
-    ) {
+    if (passesStrongVector || (passesPartialVector && (hasSingleChunkMultiTermCooccurrence || hasStrongDomainMatch))) {
       return "sufficient";
     }
 
     return hasSingleChunkMultiTermCooccurrence || hasDomainExpansion ? "partial" : "insufficient";
   }
 
-  // Lexical-only mode (when GEMINI_API_KEY is absent, quota paused, or chunks indexed with --lexical-only)
+  // Lexical-only mode (when GEMINI_API_KEY is absent or embed quota paused)
   if (!hasDomainExpansion && !hasSingleChunkMultiTermCooccurrence) {
     return "insufficient";
   }
@@ -321,51 +314,31 @@ export async function getIndexedAcervoStats(): Promise<{
   documentsCount: number;
   chunksCount: number;
   activeFilenames: string[];
-  hasVectorEmbeddings: boolean;
 }> {
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const [docs, vecCheck] = await Promise.all([
-        prisma.ragDocument.findMany({
-          where: { status: "processed" },
-          select: {
-            filename: true,
-            _count: { select: { chunks: true } },
-          },
-        }),
-        prisma.$queryRaw<{ hasVectors: boolean }[]>`
-          SELECT EXISTS (
-            SELECT 1
-            FROM "RagChunk" c
-            INNER JOIN "RagDocument" d ON d.id = c."documentId"
-            WHERE d.status = 'processed' AND c.embedding IS NOT NULL
-          ) AS "hasVectors"
-        `,
-      ]);
+  try {
+    const docs = await prisma.ragDocument.findMany({
+      where: { status: "processed" },
+      select: {
+        filename: true,
+        _count: { select: { chunks: true } },
+      },
+    });
 
-      const active = docs.filter((d) => d._count.chunks > 0);
-      const chunksCount = active.reduce((sum, d) => sum + d._count.chunks, 0);
+    const active = docs.filter((d) => d._count.chunks > 0);
+    const chunksCount = active.reduce((sum, d) => sum + d._count.chunks, 0);
 
-      return {
-        documentsCount: active.length,
-        chunksCount,
-        activeFilenames: active.map((d) => d.filename),
-        hasVectorEmbeddings: Boolean(vecCheck?.[0]?.hasVectors),
-      };
-    } catch {
-      if (attempt === 1) {
-        // Tolera breve wake-up de bancos serverless (ex.: Neon auto-suspend)
-        await new Promise((r) => setTimeout(r, 450));
-        continue;
-      }
-    }
+    return {
+      documentsCount: active.length,
+      chunksCount,
+      activeFilenames: active.map((d) => d.filename),
+    };
+  } catch {
+    return {
+      documentsCount: 0,
+      chunksCount: 0,
+      activeFilenames: [],
+    };
   }
-  return {
-    documentsCount: 0,
-    chunksCount: 0,
-    activeFilenames: [],
-    hasVectorEmbeddings: false,
-  };
 }
 
 /**
@@ -408,10 +381,7 @@ export async function retrieveHybridRagContext(
   const { coreTerms, allTerms } = buildLexicalSearchTerms(question);
   const hasDomainExpansion = DOMAIN_LEXICAL_EXPANSIONS.some((exp) => exp.pattern.test(normQuestion));
 
-  const queryVector =
-    !options?.forceLexicalOnly && stats.hasVectorEmbeddings
-      ? await embedQueryText(question)
-      : null;
+  const queryVector = options?.forceLexicalOnly ? null : await embedQueryText(question);
 
   type RawRow = {
     id: number;
@@ -513,16 +483,11 @@ export async function retrieveHybridRagContext(
     `;
   }
 
-  const effectiveVectorRows =
-    lexicalRows.length > 0
-      ? vectorRows.filter((row) => Number(row.score || 0) >= 0.45)
-      : vectorRows;
-
   // Merge via Reciprocal Rank Fusion (RRF)
   const merged = new Map<number, RetrievedRagChunk>();
   const { rrfK, vectorWeight, lexicalWeight } = RAG_CONFIG.retrieval;
 
-  effectiveVectorRows.forEach((row, index) => {
+  vectorRows.forEach((row, index) => {
     const rank = index + 1;
     merged.set(row.id, {
       id: row.id,
@@ -610,14 +575,13 @@ export async function retrieveHybridRagContext(
     selected.push(cand);
   }
 
-  const usedVectorSearch = Boolean(queryVector) && effectiveVectorRows.length > 0;
   const evidenceStatus = classifyEvidence({
     question,
     coreTerms,
     domainExtras: allTerms.filter((t) => !coreTerms.includes(t)),
     hasDomainExpansion,
     ranked: selected,
-    usedVectorSearch,
+    usedVectorSearch: Boolean(queryVector),
   });
 
   const bestCosine = selected.length ? Math.max(...selected.map((c) => c.cosineSim)) : 0;
@@ -634,9 +598,9 @@ export async function retrieveHybridRagContext(
         ? []
         : selected,
     diagnostics: {
-      usedVectorSearch,
+      usedVectorSearch: Boolean(queryVector),
       usedLexicalSearch: Boolean(orTsQuery),
-      vectorCandidates: effectiveVectorRows.length,
+      vectorCandidates: vectorRows.length,
       lexicalCandidates: lexicalRows.length,
       bestCosine,
       bestLexical,
