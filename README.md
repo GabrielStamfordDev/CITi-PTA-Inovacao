@@ -1,45 +1,116 @@
-<div align="center">
+# CuiDA — Apoio Acolhedor a Cuidadores de Pessoas com Alzheimer
 
-# 💜 CuiDA
-
-**Plataforma de apoio informativo, comunitário e assistência por IA baseada em evidências para cuidadores informais de pessoas com Doença de Alzheimer.**
-
-![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?style=flat-square&logo=node.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![Express](https://img.shields.io/badge/Express-4.21-000000?style=flat-square&logo=express&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-5.22-2D3748?style=flat-square&logo=prisma&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)
-
-</div>
+> Aplicação web *mobile-first*, acessível e baseada em evidências científicas para apoiar cuidadores informais e familiares de pessoas com Doença de Alzheimer, desenvolvida no contexto da disciplina de **Inovação / PTA (CIn–UFPE)**.
 
 ---
 
-## Sobre o Projeto
+## 🌐 Acesso Rápido: Testar na Nuvem vs. Rodar Localmente
 
-O **CuiDA** centraliza informações práticas confiáveis, rede de apoio emocional e orientação contextualizada em uma interface pensada para cuidadores familiares (incluindo público 50+):
+Você pode avaliar e utilizar o **CuiDA** de duas formas: diretamente pelo link publicado na nuvem (recomendado para testes rápidos) ou clonando o repositório para executar localmente.
 
-* **Assistente CuiDA (IA + RAG Científico):** Responde dúvidas do cuidado diário com base nos 8 documentos oficiais em [`acervo-pdf/`](./acervo-pdf) (*ABRAz*, *PCDT Ministério da Saúde*, *OMS iSupport*, *NICE NG97* e artigos de geriatria), usando prompt estruturado em **PTCF** ([`assistente-cuida.ptcf.md`](./src/prompts/assistente-cuida.ptcf.md)) e citando os PDFs clicáveis ao final de cada resposta.
-* **Eventos e Encontros:** Divulgação de webinários e simpósios com inscrição integrada ao banco.
-* **Links de Apoio:** Acesso direto a associações e grupos moderados (ABRAz-PE, WhatsApp e Facebook).
-* **Sobre Alzheimer & FAQ:** Guias objetivos sobre alimentação, síndrome do pôr do sol, saúde mental do cuidador e perguntas frequentes.
-* **Acessibilidade Sênior & Interface Mobile-First:** Controle global de tamanho de fonte (`A-` / `A+`), leitura em voz alta (*Text-to-Speech* com normalização de datas e horários) e layout *mobile-first* fiel ao protótipo do Figma (tela cheia em smartphones e moldura mobile centralizada no desktop).
-* **Segurança de Sessão:** Senhas com hash `bcryptjs`, recuperação de senha por código temporário e autenticação via **cookie `HttpOnly` JWT (HS256)** protegendo todas as rotas contra acesso indevido (*IDOR*).
+### Opção 1 — Acessar pela Nuvem (Recomendado para Avaliadores)
+
+🔗 **Acesse a aplicação:** **[https://cuida-app.onrender.com](https://cuida-app.onrender.com)**
+
+> [!WARNING]
+> **Possível espera inicial de 30 a 50 segundos (*Cold Start*):**
+> Como a aplicação e o banco de dados estão hospedados nos planos gratuitos do **Render** e do **Neon**, o serviço entra em hibernação após períodos de inatividade. No **primeiro acesso**, a página pode levar cerca de **30 a 50 segundos** para responder enquanto o servidor e o banco despertam. Após o carregamento inicial, a navegação ocorre em velocidade normal.
+
+- **Zero instalação:** funciona direto no navegador do celular ou computador.
+- **Tudo pré-configurado:** já está conectado ao banco PostgreSQL (**Neon** com `pgvector`), com o acervo científico indexado, as 4 salas do Fórum populadas e as chaves de API do **Google Gemini** (`GEMINI_API_KEY`) e de envio de e-mails **Brevo** (`BREVO_API_KEY`) ativas no servidor.
+- **Conta de demonstração opcional:** você pode criar seu próprio cadastro na tela inicial ou entrar com a conta de exemplo `maria@cuida.com` (senha `123456`).
 
 ---
 
-## Como Rodar o Projeto Localmente
+### Opção 2 — Clonar o Repositório e Rodar Localmente
 
-> **Sobre dependências:** Este projeto utiliza Node.js (`package.json` + `yarn.lock`). **Não existe `requirements.txt` nem é necessário baixar bibliotecas manualmente** — o próprio `yarn install` instala tudo de forma automática e versionada.
+Ideal para desenvolvedores ou avaliadores que desejam inspecionar o código-fonte, executar os testes de avaliação do RAG (`yarn rag:eval`), visualizar logs do servidor ou personalizar variáveis de ambiente com um PostgreSQL local via Docker.
+
+| Aspecto | Link na Nuvem (`cuida-app.onrender.com`) | Execução Local (`git clone`) |
+| :--- | :--- | :--- |
+| **Instalação** | Nenhuma (apenas navegador) | Node.js, Yarn e Docker Compose |
+| **Tempo inicial** | Pode levar **30–50s** no 1º acesso (*cold start*) | Inicialização imediata após subir o container |
+| **Banco de Dados** | Neon PostgreSQL + `pgvector` já populado | PostgreSQL local (`pgvector/pgvector:pg15`) via Docker |
+| **Gemini (`GEMINI_API_KEY`)** | Já configurada no servidor | Precisa da **sua chave** no `.env` *(ou roda no fallback local)* |
+| **Brevo (`BREVO_API_KEY`)** | Já configurada no servidor | Precisa da **sua chave** no `.env` *(ou exibe o código no terminal)* |
+
+#### 🔑 Sobre as chaves `GEMINI_API_KEY` e `BREVO_API_KEY` ao clonar localmente
+
+Por boas práticas de segurança, o arquivo `.env` com segredos **não vai para o GitHub** (ele é ignorado pelo `.gitignore`). Portanto, quem clona o repositório começa copiando o arquivo modelo `.env.example` para `.env`:
+
+1. **Para ter a experiência completa idêntica à nuvem localmente:** sim, é necessário inserir suas próprias chaves no `.env` local:
+   - `GEMINI_API_KEY`: obtida no Google AI Studio, habilita a geração de respostas humanizadas com Gemini e embeddings vetoriais (`gemini-embedding-001`).
+   - `BREVO_API_KEY` (com `MAIL_PROVIDER=brevo` e `MAIL_FROM_EMAIL`): habilita o disparo real de e-mails de recuperação de senha.
+2. **Mesmo sem nenhuma chave API configurada, o projeto roda localmente:** o CuiDA possui *fallbacks* automáticos para desenvolvimento e avaliação offline:
+   - **Sem `GEMINI_API_KEY`:** o Assistente CuiDA passa a operar automaticamente no modo **`rag-local`** (busca lexical no acervo científico indexado via `src/rag/ingestCli.ts --lexical-only`), retornando orientações estruturadas com citações sem exigir chamada à API do Gemini.
+   - **Sem `BREVO_API_KEY` (com `MAIL_PROVIDER=console`, padrão do `.env.example`):** na recuperação de senha, o código de 6 dígitos (válido por 15 minutos) é exibido diretamente no terminal onde o servidor Node.js está rodando.
+
+---
+
+## 📄 Relatório Técnico e Processo de Design Thinking
+
+Todo o embasamento da pesquisa com cuidadores, definição de problema, ideação, prototipação e validação está documentado no repositório:
+
+- 📘 **Relatório Principal:** [`relatorio.pdf`](./relatorio.pdf)
+- 🗂️ **Artefatos do Processo de Design Thinking:** [`design_thinking/`](./design_thinking)
+  - Imersão e Entendimento: [`Definição-Tema.pdf`](./design_thinking/Definição-Tema.pdf), [`Recrutamento ABRAZ.pdf`](./design_thinking/Recrutamento%20ABRAZ.pdf), [`Entrevistas.pdf`](./design_thinking/Entrevistas.pdf), [`Revisão da Literatura.pdf`](./design_thinking/Revisão%20da%20Literatura.pdf), [`Analise-Competidores.pdf`](./design_thinking/Analise-Competidores.pdf)
+  - Síntese e Experiência: [`Mapa-Mental.pdf`](./design_thinking/Mapa-Mental.pdf), [`Personas.pdf`](./design_thinking/Personas.pdf), [`Jornada-Usuário.png`](./design_thinking/Jornada-Usuário.png), [`Sintese-Geral.pdf`](./design_thinking/Sintese-Geral.pdf)
+  - Ideação e Validação: [`Geracao-Ideias.pdf`](./design_thinking/Geracao-Ideias.pdf), [`Seleção de ideias.pdf`](./design_thinking/Seleção%20de%20ideias.pdf), [`Teste-Protótipo.pdf`](./design_thinking/Teste-Protótipo.pdf)
+
+---
+
+## ✨ Funcionalidades Principais
+
+### 1. Experiência Inicial Acolhedora e Acessibilidade Global
+- **Tela inicial redesenhada:** saudação personalizada ao cuidador, atalhos diretos para o Assistente, Comunidades e Orientação do Dia.
+- **Barra de navegação inferior fixa:** acesso constante a **Voltar**, **Início**, **Assistente**, **Fórum** e **Perfil**.
+- **Controle global de tamanho do texto (`A-` / `A+`):** ajusta proporcionalmente todos os textos da interface (telas, formulários, assistente, fórum e modais) com persistência da preferência.
+- **Modais internos de confirmação:** confirmações dentro do próprio app antes de ações importantes (como *Nova conversa* no Assistente ou *Sair da conta*), evitando diálogos genéricos do navegador.
+
+### 2. Assistente CuiDA (IA + RAG Híbrido em Acervo Científico)
+- **Respostas fundamentadas em 8 documentos oficiais (`acervo-pdf/`):**
+  - Ministério da Saúde (`API_01-MS-PCDT-DA.pdf`), Organização Mundial da Saúde — *iSupport* (`API_02-iSupport-DA.pdf`), Guia de Manejo de Demências (`API_03-dementia-assessment-management-and-support.pdf`), ABRAz (`abraz-orientacoes.pdf`) e guias práticos sobre banho, diálogo, saída de casa e perambulação.
+- **Busca Híbrida + RRF + MMR (`pgvector` + busca lexical):** recupera trechos relevantes preservando diversidade entre documentos e número exato de página.
+- **Citações clicáveis por página (`#page=N`):** cada resposta exibe os documentos consultados com link direto para a página exata do PDF.
+- **Botão "Copiar orientação":** copia a orientação junto com as referências para compartilhar facilmente com familiares ou equipe de saúde.
+- **Sugestões de rotina não farmacológicas:** perguntas rápidas focadas em manejo diário, comunicação, banho, alimentação e apoio ao cuidador (sem sugestões relacionadas a medicamentos).
+- **Travas clínicas, éticas e de cota:** o Assistente não realiza diagnósticos nem prescreve medicamentos, recusa com segurança perguntas médicas agudas fora do acervo (orientando atendimento presencial) e conta com *rate limiting* (`rateLimitMiddleware.ts`) e orçamento diário de chamadas (`dailyCallBudget.ts`).
+
+### 3. Fórum de Cuidadores (Comunidades Estilo Telegram)
+- **4 comunidades temáticas e regionais já configuradas:**
+  - *Acolhimento Geral* (entrada automática ao criar conta)
+  - *Perambulação e Rotina*
+  - *Cuidadores de Pernambuco*
+  - *Saúde Mental do Cuidador*
+- **Fluxo completo de comunidade:** pré-visualização das conversas antes de entrar na sala, contagem real de membros participantes, separadores de data, contador de caracteres e atualização periódica automática.
+- **Privacidade e conformidade LGPD:** nas mensagens públicas do Fórum, os participantes aparecem apenas pelo **primeiro nome e inicial do sobrenome** (ex.: *Maria S.*), sem expor nome do familiar com Alzheimer, estágio clínico, parentesco ou cidade.
+
+### 4. Perfil do Cuidador, Conteúdo Educativo e Autenticação Segura
+- **Cadastro contextualizado:** dados sobre o parentesco, fase da doença e localização ficam restritos ao perfil privado para personalizar orientações do Assistente.
+- **Sessão autenticada com JWT em cookie `HttpOnly`** e senha criptografada com `bcryptjs`.
+- **Recuperação de senha com código de 6 dígitos** (validade de 15 minutos) via **Brevo** em produção ou terminal no modo local.
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+- **Back-end:** Node.js, TypeScript, Express, Prisma ORM
+- **Banco de Dados & Busca Vetorial:** PostgreSQL 15 + `pgvector`
+- **IA & Processamento de PDFs:** Google Gemini (`@google/genai`), `gemini-embedding-001`, `pdf-parse`, RAG híbrido (vetorial + lexical)
+- **Front-end:** HTML5, CSS3 e JavaScript *mobile-first* (SPA servida diretamente pela pasta `public/`)
+- **Segurança & E-mail:** JWT (`HttpOnly` cookie), `bcryptjs`, *rate limiting* por janela de tempo, cota diária de API e envio transacional via Brevo API / Console
+- **Infraestrutura:** Docker Compose (desenvolvimento local), Render + Neon PostgreSQL (produção via `render.yaml`)
+
+---
+
+## 💻 Passo a Passo para Rodar Localmente
 
 ### Pré-requisitos
+- **Git**
+- **Node.js** (v18+) e **Yarn**
+- **Docker Desktop** (ou Docker Engine + Docker Compose)
 
-* **[Node.js](https://nodejs.org/)** (versão 20 ou superior)
-* **[Yarn](https://yarnpkg.com/)** (`npm install -g yarn`)
-* **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** *(recomendado para subir o PostgreSQL com 1 comando)* ou PostgreSQL 15+ instalado localmente
-
----
-
-### Passo 1 — Clonar o repositório e instalar as dependências
+### 1. Clonar o repositório e instalar dependências
 
 ```bash
 git clone https://github.com/GabrielStamfordDev/CITi-PTA-Inovacao.git
@@ -47,157 +118,110 @@ cd CITi-PTA-Inovacao
 yarn install
 ```
 
-### Passo 2 — Configurar as variáveis de ambiente (`.env`)
+### 2. Configurar as variáveis de ambiente (`.env`)
 
-Copie o arquivo modelo `.env.example` para `.env`:
+Crie o arquivo `.env` a partir do modelo `.env.example`:
 
-```bash
-# Windows (PowerShell)
-Copy-Item .env.example .env
+- **Linux / macOS / Git Bash:**
+  ```bash
+  cp .env.example .env
+  ```
+- **Windows PowerShell:**
+  ```powershell
+  Copy-Item .env.example .env
+  ```
 
-# Linux / macOS / Git Bash
-cp .env.example .env
-```
+Edite o `.env` conforme o modo em que deseja executar localmente:
 
-O arquivo `.env` já vem pronto para rodar em modo local:
+| Variável | Obrigatória localmente? | Descrição e comportamento |
+| :--- | :--- | :--- |
+| `DATABASE_URL` / `DIRECT_URL` | **Sim** (já preenchida) | Já apontam por padrão para o PostgreSQL do Docker (`postgresql://postgres:docker@localhost:5432/cuida`). |
+| `AUTH_SECRET` | Opcional em dev | Chave aleatória longa para assinar cookies JWT (recomendada em produção). |
+| `GEMINI_API_KEY` | Opcional em dev | Coloque sua chave do Google AI Studio para ativar o Gemini. **Se deixada comentada/vazia, usa o modo `rag-local` automaticamente.** |
+| `MAIL_PROVIDER` | Já vem como `console` | Com `console`, códigos de redefinição de senha aparecem no terminal. Para enviar e-mails reais, defina `brevo`. |
+| `BREVO_API_KEY` | Apenas se `MAIL_PROVIDER=brevo` | Sua chave transacional da Brevo + `MAIL_FROM_EMAIL` verificado. |
 
-| Variável | Obrigatória? | Para que serve |
-| :--- | :---: | :--- |
-| `DATABASE_URL` e `DIRECT_URL` | **Sim** | Conexões com o PostgreSQL. Localmente, ambas apontam para o banco Docker (`postgresql://postgres:docker@localhost:5432/cuida`). Na nuvem (Neon), `DATABASE_URL` usa o endpoint *pooled* e `DIRECT_URL` usa o endpoint direto para migrações. |
-| `SERVER_PORT` | **Sim** | Porta HTTP da aplicação (padrão: `3001`). |
-| `GEMINI_API_KEY` | Opcional | Chave gratuita do [Google AI Studio](https://aistudio.google.com/) para respostas generativas com o Gemini. **Sem ela**, o assistente continua funcionando via motor científico local (`rag-local`). |
-| `MAIL_PROVIDER` / `BREVO_API_KEY` | Opcional | Envio real de código de recuperação de senha por e-mail. Com `MAIL_PROVIDER=console`, o código de 6 dígitos é exibido no terminal do servidor. |
-| `AUTH_SECRET` | Opcional em dev | Segredo de assinatura do token JWT (obrigatório apenas se `NODE_ENV=production`). |
-
-### Passo 3 — Subir o banco de dados PostgreSQL
-
-Com o **Docker Desktop** aberto, execute na raiz do projeto (`CITi-PTA-Inovacao`):
-
-```bash
-docker compose up -d
-```
-
-*(Caso utilize PostgreSQL instalado direto no sistema sem Docker, garanta que exista um banco chamado `cuida` com usuário/senha compatíveis com seu `.env`.)*
-
-### Passo 4 — Preparar o banco (Prisma + Migrações + Seed + Indexação RAG)
-
-Execute os comandos abaixo em sequência para gerar o Prisma Client, criar as tabelas (incluindo extensão `pgvector`), popular os conteúdos iniciais e indexar o conteúdo integral dos PDFs de [`acervo-pdf/`](./acervo-pdf):
+### 3. Subir o banco PostgreSQL com `pgvector` e preparar os dados
 
 ```bash
-yarn generate
-yarn migration:deploy
-yarn seed
-yarn rag:ingest
+docker-compose up -d
+npx prisma generate
+npx prisma migrate deploy
+npx prisma db seed
 ```
 
-> **Sobre a indexação (`yarn rag:ingest`):**
-> * Na primeira execução, extrai todas as páginas dos PDFs em `acervo-pdf/`, divide em trechos estruturais e gera os vetores semânticos (`gemini-embedding-001`, 768 dimensões) armazenados no `pgvector`.
-> * **É incremental e idempotente:** execuções seguintes verificam o hash SHA-256 e ignoram documentos inalterados sem custo de API. Ao adicionar, substituir ou remover um PDF em `acervo-pdf/`, basta rodar `yarn rag:ingest` novamente.
-> * Caso `GEMINI_API_KEY` não esteja definida ou atinja a cota diária gratuita de embeddings, passe `yarn rag:ingest -- --lexical-only` (ou execute novamente depois para preencher apenas os vetores pendentes): o assistente continua pesquisando em todos os textos via busca textual do PostgreSQL.
+### 4. Indexar o acervo científico (RAG)
 
-### Passo 5 — Iniciar a aplicação
+- **Se você configurou sua `GEMINI_API_KEY` no `.env` (indexação vetorial + lexical completa):**
+  ```bash
+  npx ts-node src/rag/ingestCli.ts
+  ```
+- **Se você NÃO colocou `GEMINI_API_KEY` (indexação lexical local gratuita e offline):**
+  ```bash
+  npx ts-node src/rag/ingestCli.ts --lexical-only
+  ```
 
-```bash
-yarn dev
-```
+### 5. Iniciar a aplicação
 
-Quando aparecer no terminal **`🚀 CuiDA rodando em http://localhost:3001`**, abra no navegador:
+- **Modo desenvolvimento (com recarregamento automático):**
+  ```bash
+  npx ts-node-dev --respawn --transpile-only src/server.ts
+  ```
+- **Modo build de produção:**
+  ```bash
+  npx tsc
+  node dist/server.js
+  ```
+
+Acesse no navegador: **[http://localhost:3001](http://localhost:3001)**
+
+---
+
+## 🧪 Avaliação Objetiva do RAG (`yarn rag:eval`)
+
+O projeto inclui um conjunto de **15 cenários de avaliação** (`src/rag/evaluateCli.ts`: 11 perguntas no escopo clínico/assistencial + 4 casos negativos e sintomas agudos fora do acervo) para medir *Precision@6*, *Document Recall*, *MRR* e taxa de recusa segura:
+
+- **Com `GEMINI_API_KEY`:**
+  ```bash
+  yarn rag:eval
+  ```
+- **Sem `GEMINI_API_KEY` (modo lexical local):**
+  ```bash
+  yarn rag:eval --lexical-only
+  ```
+
+---
+
+## 📂 Estrutura de Pastas
 
 ```text
-http://localhost:3001
-```
-
----
-
-## Conta de Demonstração (criada pelo `yarn seed`)
-
-Você pode criar sua própria conta clicando em **Registrar** ou entrar imediatamente com o perfil pré-cadastrado pelo seed:
-
-* **E-mail:** `maria@cuida.com`
-* **Senha:** `123456`
-
----
-
-## Scripts Úteis
-
-| Comando | Descrição |
-| :--- | :--- |
-| `yarn dev` | Sobe o servidor Express com recarregamento automático (`ts-node-dev`) e observa o schema do Prisma. |
-| `yarn build` | Gera o Prisma Client e compila o TypeScript para `./dist` (produção). |
-| `yarn start` | Inicia o servidor compilado (`node dist/src/server.js`) em modo produção. |
-| `yarn typecheck` | Verifica toda a tipagem TypeScript sem gerar arquivos (`tsc --noEmit`). |
-| `yarn seed` | Popula o banco local com conta demo, eventos, links de apoio, artigos e FAQs. |
-| `yarn seed:prod` | Executa o seed compilado (`node dist/prisma/seed.js`) em produção. |
-| `yarn rag:ingest` | Indexa/atualiza incrementalmente os PDFs de `acervo-pdf/` no PostgreSQL (`pgvector` + FTS). |
-| `yarn rag:ingest:prod` | Executa a ingestão RAG compilada (`node dist/src/rag/ingestCli.js`). |
-| `yarn rag:eval` | Executa a bateria objetiva de avaliação de recuperação do RAG (13 cenários). |
-| `yarn studio` | Abre a interface visual do **Prisma Studio** no navegador para inspecionar o banco de dados. |
-| `yarn migration` | Executa migrações pendentes do Prisma em desenvolvimento. |
-| `yarn migration:deploy` | Aplica migrações existentes no banco de produção sem alterar histórico. |
-
----
-
-## Deploy Gratuito na Nuvem (Neon + Render)
-
-Além de rodar localmente via Docker + `yarn dev`, o **CuiDA** já está configurado para publicação gratuita na nuvem mantendo o modo local intacto:
-
-1. **Banco PostgreSQL no [Neon](https://neon.tech/):**
-   * Crie um projeto gratuito e abra o botão **Connect**.
-   * Copie **duas URLs**:
-     * **`DATABASE_URL` (Pooled):** ative a opção **Connection pooling** (hostname com `-pooler`) — usada pela aplicação em execução.
-     * **`DIRECT_URL` (Direta):** desative **Connection pooling** (hostname sem `-pooler`) — usada pelo Prisma para executar migrações (`yarn migration:deploy`).
-2. **Backend + Frontend no [Render](https://render.com/):**
-   * Conecte este repositório no Render como **Web Service** (ou use [`render.yaml`](./render.yaml) via **New → Blueprint**).
-   * **Build Command:** `yarn install --production=false && yarn build`
-   * **Start Command:** `yarn migration:deploy && yarn seed:prod && yarn start`
-     *(O `seed` é idempotente e não destrutivo: popula apenas quando as tabelas ainda estão vazias e ignora reinicializações seguintes; passe `--force` caso queira sincronizar os itens padrão manualmente.)*
-   * **Health Check Path:** `/api/health`
-3. **Variáveis de Ambiente no painel do Render (`Environment`):**
-   * `NODE_ENV` = `production`
-   * `DATABASE_URL` = *(URL do Neon com `Connection pooling` ligado — `-pooler`)*
-   * `DIRECT_URL` = *(URL direta do Neon com `Connection pooling` desligado — sem `-pooler`)*
-   * `AUTH_SECRET` = *(string aleatória longa, ou gerada automaticamente pelo `render.yaml`)*
-   * `GEMINI_API_KEY` = *(sua chave do Google AI Studio)*
-   * `MAIL_PROVIDER` = `brevo` *(envio real automático; mantenha `console` apenas em desenvolvimento local)*
-   * `BREVO_API_KEY` = *(sua chave da Brevo)*
-   * `MAIL_FROM_NAME` = `CuiDA Apoio`
-   * `MAIL_FROM_EMAIL` = *(seu e-mail remetente verificado na Brevo)*
-
-> **Nota do plano gratuito do Render:** Após ~15 minutos sem acessos, a instância hiberna e leva cerca de **30 a 50 segundos** para acordar na primeira requisição (os dados permanecem salvos no Neon).
-
-> **Sobre a indexação RAG na nuvem (Neon):** como a ingestão processa os PDFs pesados do acervo e o plano gratuito do Render tem 512 MB de RAM, rode `yarn rag:ingest` do seu computador apontando `DATABASE_URL` / `DIRECT_URL` temporariamente no terminal para o Neon (sem gravar no `.env` local) sempre que adicionar novos PDFs ao acervo.
-
-> **Sobre o seed manual (opcional):** se precisar forçar a carga inicial a partir de um build local conectado ao banco remoto, execute `yarn build && yarn seed:prod` (ou `node dist/prisma/seed.js --force`).
-
----
-
-## Estrutura de Pastas
-
-```text
-CITi-PTA-Inovacao/
-├── acervo-pdf/          # PDFs científicos e guias oficiais indexados pelo Assistente
+.
+├── acervo-pdf/                 # 8 documentos científicos e guias oficiais (PDF)
+├── design_thinking/            # 12 artefatos completos do processo de Design Thinking
+├── figuras/                    # Figuras de apoio da documentação/relatório
 ├── prisma/
-│   ├── migrations/      # Histórico de migrações (inclui extensão pgvector e FTS)
-│   ├── schema.prisma    # Modelagem PostgreSQL + RagDocument / RagChunk (vector 768d)
-│   └── seed.ts          # Carga inicial idempotente de dados e usuário demo
+│   ├── migrations/             # Histórico de migrations (incluindo pgvector e Fórum)
+│   ├── schema.prisma           # Modelagem User, RagChunk, ForumRoom, ForumMessage, etc.
+│   └── seed.ts                 # Dados iniciais (usuários demo, eventos, FAQs e 4 salas do Fórum)
 ├── public/
-│   ├── assets/          # Imagens e ilustrações do aplicativo
-│   ├── index.html       # Interface mobile-first fiel ao protótipo do Figma
-│   └── app.js           # Lógica de telas, acessibilidade, voz e chat com citações #page=N
+│   ├── assets/                 # Logos, avatares e imagens da interface
+│   ├── app.js                  # Lógica da SPA mobile-first, Assistente, Fórum e acessibilidade
+│   └── index.html              # Estrutura HTML + estilos responsivos e acessíveis
 ├── src/
-│   ├── controllers/     # Controladores HTTP (UserController, AppController)
-│   ├── data/            # Metadados oficiais e contingência curada
-│   ├── database/        # Instância compartilhada do Prisma Client
-│   ├── middlewares/     # Autenticação JWT HttpOnly e proteção anti-IDOR
-│   ├── prompts/         # Prompt PTCF com isolamento contra prompt injection
-│   ├── rag/             # Extração por página (pdfjs-dist), chunking, embeddings, busca híbrida RRF e avaliação
-│   ├── repositories/    # Camada de acesso ao banco via Prisma
-│   ├── services/        # Orquestração Assistente CuiDA + verificação de citações + e-mail Brevo
-│   ├── utils/           # Assinatura HS256 e resolução de caminhos dev/produção
-│   ├── routes.ts        # Definição das rotas da API
-│   └── server.ts        # Entrada do servidor Express, proxy reverso e arquivos estáticos
-├── .env.example         # Modelo seguro de variáveis de ambiente
-├── docker-compose.yml   # Container pgvector/pgvector:pg15 para desenvolvimento local
-├── package.json         # Dependências e scripts Yarn
-└── render.yaml          # Blueprint de deploy gratuito no Render
+│   ├── controllers/            # Controladores HTTP (AppController, UserController)
+│   ├── data/                   # Metadados curados das 8 fontes científicas
+│   ├── database/               # Instância singleton do Prisma Client
+│   ├── middlewares/            # Autenticação JWT (authMiddleware) e rate limit (rateLimitMiddleware)
+│   ├── prompts/                # Prompt estruturado PTCF do Assistente (assistente-cuida.ptcf.md)
+│   ├── rag/                    # Extrator PDF, chunker, embeddings, ingestão, retriever e eval (15 casos)
+│   ├── repositories/           # Consultas Prisma e mascaramento LGPD do Fórum
+│   ├── services/               # Lógica de negócio (AssistantService, MailService)
+│   ├── utils/                  # Token JWT, orçamento diário de chamadas (dailyCallBudget) e paths
+│   ├── routes.ts               # Definição das rotas /api/*
+│   └── server.ts               # Inicialização do servidor Express e static files
+├── .env.example                # Modelo das variáveis de ambiente
+├── docker-compose.yml          # Container pgvector/pgvector:pg15 para uso local
+├── render.yaml                 # Configuração de deploy no Render
+├── relatorio.pdf               # Relatório técnico final do projeto
+└── README.md                   # Esta documentação
 ```
