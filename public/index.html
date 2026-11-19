@@ -22,7 +22,6 @@
     /* Moldura padrão mobile fiel ao frame do protótipo no Figma */
     .app-shell {
       width: 100%;
-      max-width: 412px;
       height: 100vh;
       height: 100dvh;
       margin: 0 auto;
@@ -32,7 +31,6 @@
       position: relative;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
       overflow: hidden;
-      transition: max-width 0.22s ease, border-radius 0.22s ease;
     }
 
     @media (min-width: 768px) {
@@ -42,61 +40,14 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        padding: 12px 16px 18px;
-        gap: 10px;
+        padding: 16px;
       }
 
       .app-shell {
-        height: min(840px, calc(100vh - 76px));
+        max-width: 412px;
+        height: min(840px, calc(100vh - 36px));
         border-radius: 38px;
         border: 6px solid #18181b;
-      }
-
-      /* Modo Site PC Responsivo */
-      body.desktop-mode .app-shell {
-        max-width: 960px;
-        height: min(840px, calc(100vh - 76px));
-        border-radius: 24px;
-        border: 1px solid #d4d4d8;
-      }
-
-      body.desktop-mode .desktop-grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      body.desktop-mode .desktop-grid-2 > * {
-        margin-top: 0 !important;
-      }
-
-      body.desktop-mode .desktop-narrow {
-        max-width: 460px;
-        width: 100%;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      body.desktop-mode .desktop-readable {
-        max-width: 700px;
-        width: 100%;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      body.desktop-mode #home-actions {
-        max-width: 720px;
-        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 14px;
-      }
-
-      body.desktop-mode #home-actions > * {
-        margin-top: 0 !important;
-      }
-
-      body.desktop-mode #assistant-quick-chips {
-        flex-wrap: wrap;
-        overflow-x: visible;
       }
     }
 
@@ -224,18 +175,6 @@
   </style>
 </head>
 <body>
-
-  <!-- SELETOR DE TESTE MOBILE vs PC RESPONSIVO (Visível apenas em telas médias/grandes) -->
-  <div id="view-mode-bar" class="hidden md:flex items-center gap-1.5 bg-white/90 backdrop-blur border border-slate-300 rounded-full p-1 shadow-sm text-xs">
-    <button type="button" id="btn-mode-mobile" onclick="setViewMode('mobile')" class="px-3.5 py-1.5 rounded-full font-semibold transition flex items-center gap-1.5">
-      <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
-      Mobile (Protótipo)
-    </button>
-    <button type="button" id="btn-mode-desktop" onclick="setViewMode('desktop')" class="px-3.5 py-1.5 rounded-full font-semibold transition flex items-center gap-1.5">
-      <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
-      Site PC (Responsivo)
-    </button>
-  </div>
 
   <div class="app-shell">
 

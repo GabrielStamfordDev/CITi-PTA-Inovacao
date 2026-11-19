@@ -444,32 +444,6 @@ function buildSpeechButtonHtml(btnId, textKey, idleLabel = "Ouvir texto", compac
 }
 
 // ==================================================
-// MODO DE VISUALIZAÇÃO (Mobile vs Site PC Responsivo)
-// ==================================================
-function setViewMode(mode) {
-  const isDesktop = mode === "desktop";
-  document.body.classList.toggle("desktop-mode", isDesktop);
-  localStorage.setItem("cuida_view_mode", isDesktop ? "desktop" : "mobile");
-
-  const btnMobile = document.getElementById("btn-mode-mobile");
-  const btnDesktop = document.getElementById("btn-mode-desktop");
-  if (btnMobile && btnDesktop) {
-    btnMobile.classList.toggle("bg-[#7353ba]", !isDesktop);
-    btnMobile.classList.toggle("text-white", !isDesktop);
-    btnMobile.classList.toggle("text-slate-600", isDesktop);
-
-    btnDesktop.classList.toggle("bg-[#7353ba]", isDesktop);
-    btnDesktop.classList.toggle("text-white", isDesktop);
-    btnDesktop.classList.toggle("text-slate-600", !isDesktop);
-  }
-}
-
-function initViewMode() {
-  const savedMode = localStorage.getItem("cuida_view_mode") || "mobile";
-  setViewMode(savedMode);
-}
-
-// ==================================================
 // NAVEGAÇÃO E SENHAS
 // ==================================================
 function navigate(screenId, pushHistory = true) {
@@ -2400,17 +2374,6 @@ function renderForumMessages(scrollToEnd = false) {
       const isMine = currentUser && Number(msg.userId) === Number(currentUser.id);
       const autorNome = msg.autor?.nome || "Cuidador(a)";
       const initial = String(autorNome).trim().charAt(0).toUpperCase() || "C";
-      const details = [];
-      if (msg.autor?.pessoaComAlzheimer) {
-        details.push(`Cuida de ${msg.autor.pessoaComAlzheimer}`);
-      }
-      if (msg.autor?.estagioDaDoenca && msg.autor.estagioDaDoenca !== "Prefiro não informar") {
-        details.push(`Fase: ${msg.autor.estagioDaDoenca}`);
-      }
-      if (msg.autor?.cidade) {
-        details.push(msg.autor.cidade);
-      }
-      const subtitle = details.join(" • ");
       const timeStr = formatForumTimestamp(msg.createdAt);
 
       const speechKey = `forum-msg-${msg.id}`;
@@ -2423,21 +2386,18 @@ function renderForumMessages(scrollToEnd = false) {
 
       return `
         ${daySeparator}<article class="desktop-readable rounded-2xl border ${cardAlignClass} p-4 shadow-sm space-y-2">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2.5 min-w-0">
               <div class="w-9 h-9 rounded-full ${isMine ? "bg-[#5b21b6] text-white" : "bg-emerald-100 text-emerald-800 border border-emerald-200"} font-brand font-extrabold text-sm flex items-center justify-center shrink-0">
                 ${escapeHtml(initial)}
               </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="font-brand text-sm font-extrabold text-slate-900">${escapeHtml(autorNome)}</span>
-                  ${
-                    isMine
-                      ? `<span class="px-2 py-0.5 rounded-full bg-[#5b21b6] text-white text-[10px] font-bold">Você</span>`
-                      : `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Membro da Comunidade</span>`
-                  }
-                </div>
-                ${subtitle ? `<p class="text-[11px] text-slate-500 truncate">${escapeHtml(subtitle)}</p>` : ""}
+              <div class="min-w-0 flex items-center gap-1.5 flex-wrap">
+                <span class="font-brand text-sm font-extrabold text-slate-900">${escapeHtml(autorNome)}</span>
+                ${
+                  isMine
+                    ? `<span class="px-2 py-0.5 rounded-full bg-[#5b21b6] text-white text-[10px] font-bold">Você</span>`
+                    : ""
+                }
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
@@ -2749,7 +2709,6 @@ document.getElementById("form-forum")?.addEventListener("submit", async (e) => {
 });
 
 window.addEventListener("DOMContentLoaded", async () => {
-  initViewMode();
   initTextScale();
   initDatePickerPair("reg-nasc", "reg-nasc-picker");
   initEstadoCombobox("reg-estado", "reg-estado-list", "reg-estado-btn");

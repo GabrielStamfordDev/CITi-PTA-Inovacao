@@ -22,7 +22,7 @@ O **CuiDA** centraliza informações práticas confiáveis, rede de apoio emocio
 * **Eventos e Encontros:** Divulgação de webinários e simpósios com inscrição integrada ao banco.
 * **Links de Apoio:** Acesso direto a associações e grupos moderados (ABRAz-PE, WhatsApp e Facebook).
 * **Sobre Alzheimer & FAQ:** Guias objetivos sobre alimentação, síndrome do pôr do sol, saúde mental do cuidador e perguntas frequentes.
-* **Acessibilidade Sênior & Responsividade:** Controle global de tamanho de fonte (`A-` / `A+`), leitura em voz alta (*Text-to-Speech* com normalização de datas e horários) e alternância entre visualização **Mobile** e **Site PC**.
+* **Acessibilidade Sênior & Interface Mobile-First:** Controle global de tamanho de fonte (`A-` / `A+`), leitura em voz alta (*Text-to-Speech* com normalização de datas e horários) e layout *mobile-first* fiel ao protótipo do Figma (tela cheia em smartphones e moldura mobile centralizada no desktop).
 * **Segurança de Sessão:** Senhas com hash `bcryptjs`, recuperação de senha por código temporário e autenticação via **cookie `HttpOnly` JWT (HS256)** protegendo todas as rotas contra acesso indevido (*IDOR*).
 
 ---
@@ -182,7 +182,7 @@ CITi-PTA-Inovacao/
 │   └── seed.ts          # Carga inicial idempotente de dados e usuário demo
 ├── public/
 │   ├── assets/          # Imagens e ilustrações do aplicativo
-│   ├── index.html       # Interface responsiva (Mobile + Site PC)
+│   ├── index.html       # Interface mobile-first fiel ao protótipo do Figma
 │   └── app.js           # Lógica de telas, acessibilidade, voz e chat com citações #page=N
 ├── src/
 │   ├── controllers/     # Controladores HTTP (UserController, AppController)

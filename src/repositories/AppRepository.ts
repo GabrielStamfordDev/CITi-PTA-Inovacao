@@ -77,14 +77,19 @@ export const findAllFaqs = async () => {
 
 export const DEFAULT_FORUM_ROOM_SLUG = "acolhimento-geral";
 
+function formatPublicForumName(rawName?: string | null): string {
+  const parts = String(rawName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "Cuidador(a)";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.`;
+}
+
 const forumAuthorSelect = {
   id: true,
   nome: true,
-  pessoaComAlzheimer: true,
-  parentesco: true,
-  estagioDaDoenca: true,
-  cidade: true,
-  estado: true,
 };
 
 function formatForumMessage(m: any) {
@@ -96,12 +101,7 @@ function formatForumMessage(m: any) {
     createdAt: m.createdAt.toISOString(),
     autor: {
       id: m.user.id,
-      nome: m.user.nome,
-      pessoaComAlzheimer: m.user.pessoaComAlzheimer,
-      parentesco: m.user.parentesco,
-      estagioDaDoenca: m.user.estagioDaDoenca,
-      cidade: m.user.cidade,
-      estado: m.user.estado,
+      nome: formatPublicForumName(m.user.nome),
     },
   };
 }
@@ -129,7 +129,7 @@ function formatForumRoom(room: any) {
           id: latest.id,
           conteudo: latest.conteudo,
           createdAt: latest.createdAt.toISOString(),
-          autorNome: latest.user?.nome || "Cuidador(a)",
+          autorNome: formatPublicForumName(latest.user?.nome),
         }
       : null,
   };

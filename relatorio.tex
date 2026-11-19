@@ -240,7 +240,7 @@ Realizei os testes com duas cuidadoras reais do perfil mapeado: \textbf{Miriam (
 
 Com os achados do Design Thinking e dos testes de usabilidade validados no Figma, parti para a construção da plataforma real em código. O objetivo foi transformar aquele protótipo em um sistema completo, seguro e pronto para uso imediato por cuidadoras reais, preservando a mesma identidade acolhedora em tons de roxo e creme suave, mas agora conectado a um banco de dados real e equipado com um assistente de Inteligência Artificial baseado em evidências científicas.
 
-Pensando na realidade do público-alvo — que muitas vezes acessa pelo celular nos intervalos do cuidado, mas também utiliza computador em casa —, desenvolvi a interface de modo responsivo com alternância rápida entre visualização \textbf{Mobile} e modo \textbf{Site PC} por meio de um seletor no topo da página.
+Pensando na experiência de um aplicativo móvel fiel ao protótipo do Figma — que funciona em tela cheia nos celulares das cuidadoras nos intervalos do cuidado e aparece centralizado em moldura mobile quando acessado pelo computador —, implementei a interface priorizando o uso direto com uma só mão (\textit{mobile-first}).
 
 \subtituloSecao{Principais Funcionalidades Implementadas}
 
@@ -267,7 +267,7 @@ Estruturei o sistema em arquitetura cliente-servidor em camadas (\textit{Routes,
     \hline
     Camada & Tecnologias e Bibliotecas & Papel no CuiDA \\
     \hline
-    Frontend Web & HTML5, Tailwind CSS e JavaScript (ES6+), Web Speech API & Interface responsiva (Mobile e Site PC), controles de acessibilidade (A-/A+), leitura em voz alta e chat interativo com links por página. \\
+    Frontend Web & HTML5, Tailwind CSS e JavaScript (ES6+), Web Speech API & Interface \textit{mobile-first} em tela única, controles de acessibilidade (A-/A+), leitura em voz alta e chat interativo com links por página. \\
     \hline
     Backend e API & Node.js (v22+), TypeScript e Express & Servidor HTTP único servindo a interface estática, os arquivos PDF do acervo (\texttt{/acervo-pdf}) e as rotas REST em JSON. \\
     \hline
